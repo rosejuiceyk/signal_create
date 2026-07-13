@@ -1,0 +1,519 @@
+{
+  "$defs": {
+    "ADCConfig": {
+      "additionalProperties": false,
+      "description": "Placeholder analog-to-digital converter configuration.",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "bits": {
+          "$ref": "#/$defs/ParameterValue_int_"
+        },
+        "input_min_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "input_max_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "offset_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        }
+      },
+      "required": [
+        "bits",
+        "input_min_V",
+        "input_max_V",
+        "offset_V"
+      ],
+      "title": "ADCConfig",
+      "type": "object"
+    },
+    "AmplitudeCalibrationConfig": {
+      "additionalProperties": false,
+      "description": "Placeholder values for the future energy-to-peak calibration.",
+      "properties": {
+        "gain_V_per_keV": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "offset_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "spread_std_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "polarity": {
+          "$ref": "#/$defs/ParameterValue_int_"
+        }
+      },
+      "required": [
+        "gain_V_per_keV",
+        "offset_V",
+        "spread_std_V",
+        "polarity"
+      ],
+      "title": "AmplitudeCalibrationConfig",
+      "type": "object"
+    },
+    "BaselineConfig": {
+      "additionalProperties": false,
+      "description": "Placeholder baseline configuration.",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "offset_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        }
+      },
+      "required": [
+        "offset_V"
+      ],
+      "title": "BaselineConfig",
+      "type": "object"
+    },
+    "DeadTimeConfig": {
+      "additionalProperties": false,
+      "description": "Placeholder dead-time configuration; no filtering is implemented.",
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/DeadTimeMode",
+          "default": "none"
+        },
+        "duration_s": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        }
+      },
+      "required": [
+        "duration_s"
+      ],
+      "title": "DeadTimeConfig",
+      "type": "object"
+    },
+    "DeadTimeMode": {
+      "description": "Supported future dead-time modes.",
+      "enum": [
+        "none",
+        "nonparalyzable",
+        "paralyzable"
+      ],
+      "title": "DeadTimeMode",
+      "type": "string"
+    },
+    "EnergySpectrumConfig": {
+      "additionalProperties": false,
+      "description": "Declarative placeholder for a future He-3 spectrum provider.",
+      "properties": {
+        "provider": {
+          "default": "parametric_he3",
+          "title": "Provider",
+          "type": "string"
+        },
+        "full_energy_keV": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "full_energy_fraction": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "proton_wall_fraction": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "triton_wall_fraction": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "double_wall_fraction": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        }
+      },
+      "required": [
+        "full_energy_keV",
+        "full_energy_fraction",
+        "proton_wall_fraction",
+        "triton_wall_fraction",
+        "double_wall_fraction"
+      ],
+      "title": "EnergySpectrumConfig",
+      "type": "object"
+    },
+    "NoiseConfig": {
+      "additionalProperties": false,
+      "description": "Placeholder noise configuration.",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "white_noise_rms_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "low_frequency_drift_enabled": {
+          "default": false,
+          "title": "Low Frequency Drift Enabled",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "white_noise_rms_V"
+      ],
+      "title": "NoiseConfig",
+      "type": "object"
+    },
+    "ObservationMode": {
+      "description": "Method used to define the virtual observation horizon.",
+      "enum": [
+        "fixed_duration",
+        "target_event_count"
+      ],
+      "title": "ObservationMode",
+      "type": "string"
+    },
+    "ObservationWindowConfig": {
+      "additionalProperties": false,
+      "description": "Configuration for a fixed duration or a target event count.",
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/ObservationMode"
+        },
+        "duration_s": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "target_event_count": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_int_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "ObservationWindowConfig",
+      "type": "object"
+    },
+    "ParameterStatus": {
+      "description": "Evidence status attached to configurable numerical parameters.",
+      "enum": [
+        "synthetic_demo",
+        "provisional",
+        "validated"
+      ],
+      "title": "ParameterStatus",
+      "type": "string"
+    },
+    "ParameterValue_float_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "status": {
+          "$ref": "#/$defs/ParameterStatus"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "reviewed_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed By"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed At"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "value",
+        "status"
+      ],
+      "title": "ParameterValue[float]",
+      "type": "object"
+    },
+    "ParameterValue_int_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "status": {
+          "$ref": "#/$defs/ParameterStatus"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "reviewed_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed By"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed At"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "value",
+        "status"
+      ],
+      "title": "ParameterValue[int]",
+      "type": "object"
+    },
+    "PulseShapeConfig": {
+      "additionalProperties": false,
+      "description": "Time constants for the future peak-normalized double exponential.",
+      "properties": {
+        "tau_r_s": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "tau_d_s": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        }
+      },
+      "required": [
+        "tau_r_s",
+        "tau_d_s"
+      ],
+      "title": "PulseShapeConfig",
+      "type": "object"
+    },
+    "RunMetadataConfig": {
+      "additionalProperties": false,
+      "description": "Run identity and reproducibility inputs.",
+      "properties": {
+        "run_name": {
+          "minLength": 1,
+          "title": "Run Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "seed": {
+          "$ref": "#/$defs/ParameterValue_int_"
+        }
+      },
+      "required": [
+        "run_name",
+        "seed"
+      ],
+      "title": "RunMetadataConfig",
+      "type": "object"
+    },
+    "SimulationDomainConfig": {
+      "additionalProperties": false,
+      "description": "Supported true-rate and sampling-rate operating inputs.",
+      "properties": {
+        "true_rate_cps": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "sample_rate_hz": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        }
+      },
+      "required": [
+        "true_rate_cps",
+        "sample_rate_hz"
+      ],
+      "title": "SimulationDomainConfig",
+      "type": "object"
+    },
+    "TriggerConfig": {
+      "additionalProperties": false,
+      "description": "Placeholder threshold-trigger configuration.",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "polarity": {
+          "$ref": "#/$defs/ParameterValue_int_"
+        },
+        "threshold_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "hysteresis_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "min_hold_s": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        }
+      },
+      "required": [
+        "polarity",
+        "threshold_V",
+        "hysteresis_V",
+        "min_hold_s"
+      ],
+      "title": "TriggerConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Top-level Phase 0 configuration contract.",
+  "properties": {
+    "schema_version": {
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/RunMetadataConfig"
+    },
+    "simulation": {
+      "$ref": "#/$defs/SimulationDomainConfig"
+    },
+    "observation": {
+      "$ref": "#/$defs/ObservationWindowConfig"
+    },
+    "spectrum": {
+      "$ref": "#/$defs/EnergySpectrumConfig"
+    },
+    "amplitude": {
+      "$ref": "#/$defs/AmplitudeCalibrationConfig"
+    },
+    "pulse_shape": {
+      "$ref": "#/$defs/PulseShapeConfig"
+    },
+    "baseline": {
+      "$ref": "#/$defs/BaselineConfig"
+    },
+    "noise": {
+      "$ref": "#/$defs/NoiseConfig"
+    },
+    "adc": {
+      "$ref": "#/$defs/ADCConfig"
+    },
+    "trigger": {
+      "$ref": "#/$defs/TriggerConfig"
+    },
+    "dead_time": {
+      "$ref": "#/$defs/DeadTimeConfig"
+    }
+  },
+  "required": [
+    "metadata",
+    "simulation",
+    "observation",
+    "spectrum",
+    "amplitude",
+    "pulse_shape",
+    "baseline",
+    "noise",
+    "adc",
+    "trigger",
+    "dead_time"
+  ],
+  "title": "He3SimConfig",
+  "type": "object"
+}

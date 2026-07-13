@@ -1,0 +1,129 @@
+schema_version: "1"
+metadata:
+  run_name: phase0-provisional-he3
+  description: >-
+    Structurally valid placeholder configuration. Null fields require calibration and this
+    file is not ready for physical simulation.
+  seed:
+    value: 20260711
+    status: provisional
+    source: Project configuration draft; seed is an operational choice.
+simulation:
+  true_rate_cps:
+    value: 1000.0
+    status: provisional
+    source: Example operating point requiring run-specific confirmation.
+  sample_rate_hz:
+    value: 250000000.0
+    status: provisional
+    source: Supported project range; acquisition configuration not yet confirmed.
+observation:
+  mode: fixed_duration
+  duration_s:
+    value: 0.001
+    status: provisional
+    source: Example observation duration requiring run-specific confirmation.
+spectrum:
+  provider: parametric_he3
+  full_energy_keV:
+    value: 764.0
+    status: provisional
+    source: Theoretical He-3 reaction Q-value; not detector calibration data.
+  full_energy_fraction:
+    value: null
+    status: provisional
+    notes: Pending detector energy-spectrum calibration.
+  proton_wall_fraction:
+    value: null
+    status: provisional
+    notes: Pending detector energy-spectrum calibration.
+  triton_wall_fraction:
+    value: null
+    status: provisional
+    notes: Pending detector energy-spectrum calibration.
+  double_wall_fraction:
+    value: null
+    status: provisional
+    notes: Pending detector energy-spectrum calibration.
+amplitude:
+  gain_V_per_keV:
+    value: null
+    status: provisional
+    notes: Pending preamplifier amplitude calibration.
+  offset_V:
+    value: null
+    status: provisional
+    notes: Pending preamplifier amplitude calibration.
+  spread_std_V:
+    value: null
+    status: provisional
+    notes: Pending amplitude-resolution calibration.
+  polarity:
+    value: null
+    status: provisional
+    notes: Pending acquisition polarity confirmation.
+pulse_shape:
+  tau_r_s:
+    value: null
+    status: provisional
+    notes: Pending isolated-pulse calibration.
+  tau_d_s:
+    value: null
+    status: provisional
+    notes: Pending isolated-pulse calibration.
+baseline:
+  enabled: false
+  offset_V:
+    value: null
+    status: provisional
+    notes: Pending oscilloscope baseline measurement.
+noise:
+  enabled: false
+  white_noise_rms_V:
+    value: null
+    status: provisional
+    notes: Pending oscilloscope noise measurement.
+  low_frequency_drift_enabled: false
+adc:
+  enabled: false
+  bits:
+    value: null
+    status: provisional
+    notes: Pending acquisition-device configuration.
+  input_min_V:
+    value: null
+    status: provisional
+    notes: Pending acquisition-device configuration.
+  input_max_V:
+    value: null
+    status: provisional
+    notes: Pending acquisition-device configuration.
+  offset_V:
+    value: null
+    status: provisional
+    notes: Pending acquisition-device configuration.
+trigger:
+  enabled: false
+  polarity:
+    value: null
+    status: provisional
+    notes: Pending trigger configuration.
+  threshold_V:
+    value: null
+    status: provisional
+    notes: Pending trigger configuration.
+  hysteresis_V:
+    value: null
+    status: provisional
+    notes: Pending trigger configuration.
+  min_hold_s:
+    value: null
+    status: provisional
+    notes: Pending trigger configuration.
+dead_time:
+  mode: none
+  duration_s:
+    value: 0.0
+    status: provisional
+    source: Dead-time processing disabled in this Phase 0 placeholder.
+

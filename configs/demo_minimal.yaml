@@ -1,0 +1,117 @@
+schema_version: "1"
+metadata:
+  run_name: phase0-synthetic-demo
+  description: >-
+    Structural demonstration only. No value in this file is a measured detector,
+    preamplifier, digitizer, trigger, or oscilloscope parameter.
+  seed:
+    value: 20260711
+    status: synthetic_demo
+    notes: Reproducible demonstration seed.
+simulation:
+  true_rate_cps:
+    value: 1000.0
+    status: synthetic_demo
+    notes: Demonstration operating input, not a measured rate.
+  sample_rate_hz:
+    value: 250000000.0
+    status: synthetic_demo
+    notes: Demonstration value within the supported project range.
+observation:
+  mode: fixed_duration
+  duration_s:
+    value: 0.001
+    status: synthetic_demo
+spectrum:
+  provider: parametric_he3
+  full_energy_keV:
+    value: 764.0
+    status: synthetic_demo
+    notes: Demonstration use of the theoretical reaction energy; not a detector calibration.
+  full_energy_fraction:
+    value: 0.5
+    status: synthetic_demo
+    notes: Arbitrary demonstration mixture value.
+  proton_wall_fraction:
+    value: 0.2
+    status: synthetic_demo
+    notes: Arbitrary demonstration mixture value.
+  triton_wall_fraction:
+    value: 0.2
+    status: synthetic_demo
+    notes: Arbitrary demonstration mixture value.
+  double_wall_fraction:
+    value: 0.1
+    status: synthetic_demo
+    notes: Arbitrary demonstration mixture value.
+amplitude:
+  gain_V_per_keV:
+    value: 0.0001
+    status: synthetic_demo
+    notes: Arbitrary demonstration gain; not a preamplifier calibration.
+  offset_V:
+    value: 0.0
+    status: synthetic_demo
+  spread_std_V:
+    value: 0.001
+    status: synthetic_demo
+    notes: Arbitrary demonstration spread.
+  polarity:
+    value: 1
+    status: synthetic_demo
+pulse_shape:
+  tau_r_s:
+    value: 0.000001
+    status: synthetic_demo
+    notes: Arbitrary model time constant.
+  tau_d_s:
+    value: 0.00001
+    status: synthetic_demo
+    notes: Arbitrary model time constant.
+baseline:
+  enabled: true
+  offset_V:
+    value: 0.0
+    status: synthetic_demo
+noise:
+  enabled: true
+  white_noise_rms_V:
+    value: 0.001
+    status: synthetic_demo
+    notes: Arbitrary demonstration RMS.
+  low_frequency_drift_enabled: false
+adc:
+  enabled: true
+  bits:
+    value: 14
+    status: synthetic_demo
+    notes: Arbitrary demonstration bit depth; not a device specification.
+  input_min_V:
+    value: -1.0
+    status: synthetic_demo
+  input_max_V:
+    value: 1.0
+    status: synthetic_demo
+  offset_V:
+    value: 0.0
+    status: synthetic_demo
+trigger:
+  enabled: false
+  polarity:
+    value: 1
+    status: synthetic_demo
+  threshold_V:
+    value: 0.01
+    status: synthetic_demo
+  hysteresis_V:
+    value: 0.001
+    status: synthetic_demo
+  min_hold_s:
+    value: 0.000001
+    status: synthetic_demo
+dead_time:
+  mode: none
+  duration_s:
+    value: 0.0
+    status: synthetic_demo
+
