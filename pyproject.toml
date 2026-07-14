@@ -9,9 +9,12 @@ description = "Foundations for a reproducible He-3 pulse simulation research pac
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "h5py>=3.10,<4",
+    "matplotlib>=3.8,<4",
     "numpy>=1.26,<3",
     "pydantic>=2.7,<3",
     "PyYAML>=6,<7",
+    "streamlit>=1.37,<2",
     "typer>=0.12,<1",
 ]
 
@@ -21,6 +24,9 @@ dev = [
     "pytest>=7.4,<9",
     "ruff>=0.5,<1",
     "types-PyYAML>=6,<7",
+]
+ml = [
+    "torch>=2.11,<2.13",
 ]
 
 [project.scripts]

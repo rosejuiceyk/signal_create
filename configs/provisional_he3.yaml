@@ -1,6 +1,6 @@
 schema_version: "1"
 metadata:
-  run_name: phase0-provisional-he3
+  run_name: phase2-provisional-he3
   description: >-
     Structurally valid placeholder configuration. Null fields require calibration and this
     file is not ready for physical simulation.
@@ -29,6 +29,10 @@ spectrum:
     value: 764.0
     status: provisional
     source: Theoretical He-3 reaction Q-value; not detector calibration data.
+  full_energy_sigma_keV:
+    value: null
+    status: provisional
+    notes: Pending detector energy-resolution calibration.
   full_energy_fraction:
     value: null
     status: provisional
@@ -37,11 +41,59 @@ spectrum:
     value: null
     status: provisional
     notes: Pending detector energy-spectrum calibration.
+  proton_wall_min_keV:
+    value: null
+    status: provisional
+    notes: Pending reviewed spectrum-domain definition.
+  proton_wall_max_keV:
+    value: null
+    status: provisional
+    notes: Pending reviewed spectrum-domain definition.
+  proton_wall_alpha:
+    value: null
+    status: provisional
+    notes: Pending detector energy-spectrum calibration.
+  proton_wall_beta:
+    value: null
+    status: provisional
+    notes: Pending detector energy-spectrum calibration.
   triton_wall_fraction:
     value: null
     status: provisional
     notes: Pending detector energy-spectrum calibration.
+  triton_wall_min_keV:
+    value: null
+    status: provisional
+    notes: Pending reviewed spectrum-domain definition.
+  triton_wall_max_keV:
+    value: null
+    status: provisional
+    notes: Pending reviewed spectrum-domain definition.
+  triton_wall_alpha:
+    value: null
+    status: provisional
+    notes: Pending detector energy-spectrum calibration.
+  triton_wall_beta:
+    value: null
+    status: provisional
+    notes: Pending detector energy-spectrum calibration.
   double_wall_fraction:
+    value: null
+    status: provisional
+    notes: Pending detector energy-spectrum calibration.
+  double_wall_min_keV:
+    value: null
+    status: provisional
+    notes: Pending reviewed spectrum-domain definition.
+  double_wall_max_keV:
+    value: null
+    status: provisional
+    notes: Pending reviewed spectrum-domain definition.
+  double_wall_alpha:
+    value: null
+    status: provisional
+    notes: Pending detector energy-spectrum calibration.
+  double_wall_beta:
     value: null
     status: provisional
     notes: Pending detector energy-spectrum calibration.
@@ -71,6 +123,21 @@ pulse_shape:
     value: null
     status: provisional
     notes: Pending isolated-pulse calibration.
+waveform:
+  renderer: auto
+  max_samples_per_block:
+    value: 65536
+    status: provisional
+    source: Software memory-control choice; confirm for the target workstation.
+  save_analog: false
+  analog_clip_min_V:
+    value: null
+    status: provisional
+    notes: Pending electronics operating-range confirmation.
+  analog_clip_max_V:
+    value: null
+    status: provisional
+    notes: Pending electronics operating-range confirmation.
 baseline:
   enabled: false
   offset_V:
@@ -84,6 +151,14 @@ noise:
     status: provisional
     notes: Pending oscilloscope noise measurement.
   low_frequency_drift_enabled: false
+  low_frequency_drift_rms_V:
+    value: null
+    status: provisional
+    notes: Pending oscilloscope baseline-drift measurement.
+  low_frequency_drift_correlation_s:
+    value: null
+    status: provisional
+    notes: Pending oscilloscope baseline-drift measurement.
 adc:
   enabled: false
   bits:
@@ -120,10 +195,28 @@ trigger:
     value: null
     status: provisional
     notes: Pending trigger configuration.
+  pre_trigger_s:
+    value: null
+    status: provisional
+    notes: Pending acquisition-window configuration.
+  post_trigger_s:
+    value: null
+    status: provisional
+    notes: Pending acquisition-window configuration.
 dead_time:
   mode: none
   duration_s:
     value: 0.0
     status: provisional
     source: Dead-time processing disabled in this Phase 0 placeholder.
-
+dataset:
+  continuous_duration_s:
+    value: null
+    status: provisional
+    notes: Pending bounded continuous-region choice.
+  max_windows:
+    value: 256
+    status: provisional
+    source: Software memory and file-size guard requiring run-specific review.
+  compression: gzip
+  compression_level: 4

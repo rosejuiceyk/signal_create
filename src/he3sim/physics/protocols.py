@@ -7,6 +7,8 @@ from typing import Protocol
 import numpy as np
 import numpy.typing as npt
 
+from he3sim.types import PulseParameterSamples, SpectrumSamples
+
 
 class RateProfile(Protocol):
     """Return a true arrival rate in counts per second at time ``t_s``."""
@@ -17,7 +19,7 @@ class RateProfile(Protocol):
 
 
 class EventArrivalGenerator(Protocol):
-    """Contract for future truth-layer arrival samplers."""
+    """Contract implemented by Phase 1 truth-layer arrival samplers."""
 
     def sample(
         self,
@@ -26,15 +28,28 @@ class EventArrivalGenerator(Protocol):
         duration_s: float,
         rng: np.random.Generator,
     ) -> npt.NDArray[np.float64]:
-        """Return sorted event times; no implementation exists in Phase 0."""
+        """Return sorted event times."""
         ...
 
 
 class EnergySpectrumProvider(Protocol):
-    """Contract for future deposited-energy providers."""
+    """Contract for Phase 1 and future deposited-energy providers."""
 
-    def sample(self, n: int, rng: np.random.Generator) -> npt.NDArray[np.float64]:
-        """Return deposited energies in keV; no implementation exists in Phase 0."""
+    def sample(self, n: int, rng: np.random.Generator) -> SpectrumSamples:
+        """Return deposited energies and component IDs."""
+        ...
+
+
+class PulseParameterProvider(Protocol):
+    """Contract for fixed or future conditional pulse-parameter sampling."""
+
+    def sample(
+        self,
+        amplitude_peak_V: npt.NDArray[np.float64],
+        spectrum_component_id: npt.NDArray[np.int16],
+        rng: np.random.Generator,
+    ) -> PulseParameterSamples:
+        """Return aligned time constants, optionally conditioned on event marks."""
         ...
 
 

@@ -85,6 +85,33 @@ def test_observation_mode_fields_are_mutually_exclusive() -> None:
         He3SimConfig.model_validate(raw)
 
 
+def test_target_event_duration_is_clamped_by_explicit_bounds() -> None:
+    raw = load_raw("demo_minimal.yaml")
+    raw["observation"] = {
+        "mode": "target_event_count",
+        "target_event_count": {"value": 100, "status": "synthetic_demo"},
+        "min_duration_s": {"value": 0.2, "status": "synthetic_demo"},
+        "max_duration_s": {"value": 1.0, "status": "synthetic_demo"},
+    }
+    config = He3SimConfig.model_validate(raw)
+
+    from he3sim.physics.events import resolve_duration_s
+
+    assert resolve_duration_s(config) == 0.2
+
+
+def test_phase3_trigger_and_dataset_guards_are_validated() -> None:
+    excessive_hysteresis = load_raw("demo_minimal.yaml")
+    excessive_hysteresis["trigger"]["hysteresis_V"]["value"] = 0.01
+    with pytest.raises(ValidationError, match="below threshold"):
+        He3SimConfig.model_validate(excessive_hysteresis)
+
+    invalid_windows = load_raw("demo_minimal.yaml")
+    invalid_windows["dataset"]["max_windows"]["value"] = 0
+    with pytest.raises(ValidationError, match="max_windows"):
+        He3SimConfig.model_validate(invalid_windows)
+
+
 def test_time_constant_order_is_enforced() -> None:
     raw = load_raw("demo_minimal.yaml")
     raw["pulse_shape"]["tau_d_s"]["value"] = raw["pulse_shape"]["tau_r_s"]["value"]
@@ -139,6 +166,87 @@ def test_non_finite_configuration_values_are_rejected(non_finite: float) -> None
 
     with pytest.raises(ValidationError):
         He3SimConfig.model_validate(raw)
+
+
+def test_invalid_seed_missing_field_and_unit_bearing_value_are_rejected() -> None:
+    negative_seed = load_raw("demo_minimal.yaml")
+    negative_seed["metadata"]["seed"]["value"] = -1
+    with pytest.raises(ValidationError, match="seed"):
+        He3SimConfig.model_validate(negative_seed)
+
+    boolean_seed = load_raw("demo_minimal.yaml")
+    boolean_seed["metadata"]["seed"]["value"] = True
+    with pytest.raises(ValidationError, match="integer"):
+        He3SimConfig.model_validate(boolean_seed)
+
+    missing_field = load_raw("demo_minimal.yaml")
+    del missing_field["spectrum"]["full_energy_sigma_keV"]
+    with pytest.raises(ValidationError, match="full_energy_sigma_keV"):
+        He3SimConfig.model_validate(missing_field)
+
+    invalid_unit = load_raw("demo_minimal.yaml")
+    invalid_unit["simulation"]["true_rate_cps"]["value"] = "1000 Hz"
+    with pytest.raises(ValidationError, match="valid number"):
+        He3SimConfig.model_validate(invalid_unit)
+
+
+@pytest.mark.parametrize(
+    ("section", "field", "value", "message"),
+    [
+        ("observation", "duration_s", 0.0, "positive"),
+        ("observation", "duration_s", -1.0, "positive"),
+        ("pulse_shape", "tau_r_s", -1.0, "positive"),
+        ("pulse_shape", "tau_d_s", -1.0, "positive"),
+    ],
+)
+def test_phase1_time_boundaries_are_rejected(
+    section: str,
+    field: str,
+    value: float,
+    message: str,
+) -> None:
+    raw = load_raw("demo_minimal.yaml")
+    raw[section][field]["value"] = value
+
+    with pytest.raises(ValidationError, match=message):
+        He3SimConfig.model_validate(raw)
+
+
+@pytest.mark.parametrize(
+    ("section", "field", "value", "message"),
+    [
+        ("waveform", "max_samples_per_block", 0, "positive"),
+        ("adc", "bits", 0, "within"),
+        ("adc", "bits", 17, "within"),
+        ("noise", "low_frequency_drift_rms_V", -1.0, "non-negative"),
+        ("noise", "low_frequency_drift_correlation_s", 0.0, "positive"),
+    ],
+)
+def test_phase2_configuration_boundaries_are_rejected(
+    section: str,
+    field: str,
+    value: float,
+    message: str,
+) -> None:
+    raw = load_raw("demo_minimal.yaml")
+    raw[section][field]["value"] = value
+
+    with pytest.raises(ValidationError, match=message):
+        He3SimConfig.model_validate(raw)
+
+
+def test_phase2_voltage_ranges_and_enabled_drift_parameters_are_validated() -> None:
+    invalid_clip = load_raw("demo_minimal.yaml")
+    invalid_clip["waveform"]["analog_clip_max_V"]["value"] = -1.0
+    with pytest.raises(ValidationError, match="analog_clip_max_V"):
+        He3SimConfig.model_validate(invalid_clip)
+
+    missing_drift = load_raw("demo_minimal.yaml")
+    missing_drift["noise"]["low_frequency_drift_enabled"] = True
+    missing_drift["noise"]["low_frequency_drift_rms_V"]["value"] = None
+    missing_drift["noise"]["low_frequency_drift_rms_V"]["status"] = "provisional"
+    with pytest.raises(ValidationError, match="requires RMS"):
+        He3SimConfig.model_validate(missing_drift)
 
 
 def test_config_hash_is_order_independent_and_value_sensitive() -> None:

@@ -1,6 +1,6 @@
 schema_version: "1"
 metadata:
-  run_name: phase0-synthetic-demo
+  run_name: phase2-synthetic-demo
   description: >-
     Structural demonstration only. No value in this file is a measured detector,
     preamplifier, digitizer, trigger, or oscilloscope parameter.
@@ -20,7 +20,7 @@ simulation:
 observation:
   mode: fixed_duration
   duration_s:
-    value: 0.001
+    value: 0.01
     status: synthetic_demo
 spectrum:
   provider: parametric_he3
@@ -28,6 +28,10 @@ spectrum:
     value: 764.0
     status: synthetic_demo
     notes: Demonstration use of the theoretical reaction energy; not a detector calibration.
+  full_energy_sigma_keV:
+    value: 12.0
+    status: synthetic_demo
+    notes: Arbitrary demonstration peak broadening; not detector resolution data.
   full_energy_fraction:
     value: 0.5
     status: synthetic_demo
@@ -36,14 +40,62 @@ spectrum:
     value: 0.2
     status: synthetic_demo
     notes: Arbitrary demonstration mixture value.
+  proton_wall_min_keV:
+    value: 191.0
+    status: synthetic_demo
+    notes: Demonstration domain endpoint; not a calibrated detector boundary.
+  proton_wall_max_keV:
+    value: 764.0
+    status: synthetic_demo
+    notes: Demonstration domain endpoint; not a calibrated detector boundary.
+  proton_wall_alpha:
+    value: 1.5
+    status: synthetic_demo
+    notes: Arbitrary demonstration Beta shape.
+  proton_wall_beta:
+    value: 2.0
+    status: synthetic_demo
+    notes: Arbitrary demonstration Beta shape.
   triton_wall_fraction:
     value: 0.2
     status: synthetic_demo
     notes: Arbitrary demonstration mixture value.
+  triton_wall_min_keV:
+    value: 573.0
+    status: synthetic_demo
+    notes: Demonstration domain endpoint; not a calibrated detector boundary.
+  triton_wall_max_keV:
+    value: 764.0
+    status: synthetic_demo
+    notes: Demonstration domain endpoint; not a calibrated detector boundary.
+  triton_wall_alpha:
+    value: 1.5
+    status: synthetic_demo
+    notes: Arbitrary demonstration Beta shape.
+  triton_wall_beta:
+    value: 2.0
+    status: synthetic_demo
+    notes: Arbitrary demonstration Beta shape.
   double_wall_fraction:
     value: 0.1
     status: synthetic_demo
     notes: Arbitrary demonstration mixture value.
+  double_wall_min_keV:
+    value: 0.0
+    status: synthetic_demo
+    notes: Demonstration domain endpoint; not a calibrated detector boundary.
+  double_wall_max_keV:
+    value: 764.0
+    status: synthetic_demo
+    notes: Demonstration domain endpoint; not a calibrated detector boundary.
+  double_wall_alpha:
+    value: 1.2
+    status: synthetic_demo
+    notes: Arbitrary demonstration Beta shape.
+  double_wall_beta:
+    value: 3.0
+    status: synthetic_demo
+    notes: Arbitrary demonstration Beta shape.
 amplitude:
   gain_V_per_keV:
     value: 0.0001
@@ -68,6 +120,21 @@ pulse_shape:
     value: 0.00001
     status: synthetic_demo
     notes: Arbitrary model time constant.
+waveform:
+  renderer: auto
+  max_samples_per_block:
+    value: 65536
+    status: synthetic_demo
+    notes: Demonstration memory bound; not a hardware buffer size.
+  save_analog: true
+  analog_clip_min_V:
+    value: -1.0
+    status: synthetic_demo
+    notes: Arbitrary software clipping limit; not a preamplifier specification.
+  analog_clip_max_V:
+    value: 1.0
+    status: synthetic_demo
+    notes: Arbitrary software clipping limit; not a preamplifier specification.
 baseline:
   enabled: true
   offset_V:
@@ -80,6 +147,14 @@ noise:
     status: synthetic_demo
     notes: Arbitrary demonstration RMS.
   low_frequency_drift_enabled: false
+  low_frequency_drift_rms_V:
+    value: 0.0002
+    status: synthetic_demo
+    notes: Arbitrary disabled AR(1) drift scale; not a measured baseline statistic.
+  low_frequency_drift_correlation_s:
+    value: 0.0001
+    status: synthetic_demo
+    notes: Arbitrary disabled AR(1) correlation time; not a measured value.
 adc:
   enabled: true
   bits:
@@ -96,7 +171,7 @@ adc:
     value: 0.0
     status: synthetic_demo
 trigger:
-  enabled: false
+  enabled: true
   polarity:
     value: 1
     status: synthetic_demo
@@ -109,9 +184,29 @@ trigger:
   min_hold_s:
     value: 0.000001
     status: synthetic_demo
-dead_time:
-  mode: none
-  duration_s:
-    value: 0.0
+    notes: Arbitrary software trigger hold time; not an acquisition-device setting.
+  pre_trigger_s:
+    value: 0.00001
     status: synthetic_demo
-
+    notes: Arbitrary event-window extent.
+  post_trigger_s:
+    value: 0.00008
+    status: synthetic_demo
+    notes: Arbitrary event-window extent.
+dead_time:
+  mode: nonparalyzable
+  duration_s:
+    value: 0.0000001
+    status: synthetic_demo
+    notes: Arbitrary observation-layer dead time; not a device specification.
+dataset:
+  continuous_duration_s:
+    value: 0.005
+    status: synthetic_demo
+    notes: Bounded software review region within the 10 ms event horizon.
+  max_windows:
+    value: 256
+    status: synthetic_demo
+    notes: Software memory and file-size guard.
+  compression: gzip
+  compression_level: 4

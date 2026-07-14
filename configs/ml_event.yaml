@@ -1,0 +1,21 @@
+base_config_path: demo_minimal.yaml
+output_directory: ../outputs/phase05_training
+resume_from: null
+device: auto
+seed: 20260714
+train_windows: 768
+validation_windows: 130
+epochs: 20
+batch_size: 64
+learning_rate: 0.002
+checkpoint_every: 5
+rate_min_cps: 10.0
+rate_max_cps: 10000000.0
+expected_events_min: 8.0
+expected_events_max: 64.0
+max_events_per_window: 512
+architecture:
+  hidden_dim: 64
+  hidden_layers: 2
+  interval_mixture_components: 3
+  minimum_scale: 0.02

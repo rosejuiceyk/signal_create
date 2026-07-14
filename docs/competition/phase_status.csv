@@ -1,0 +1,7 @@
+phase_order,phase,result,automatic_acceptance,human_review
+0,Phase 0,工程骨架、配置、类型、随机性和 CLI,通过,通过
+1,Phase 1,两种泊松到达、参数化能谱、幅值和真值事件,通过,通过
+2,Phase 2,双指数脉冲、连续波形、噪声、裁剪和 ADC,通过,通过
+3,Phase 3,触发、死时间、多尺度 HDF5 和统计验证,通过,通过
+4,Phase 3.5,本地 Web 工况输入、波形、CSV 和图片,通过,等待审核
+5,Phase 4～6,实测标定、条件事件模型和物理残差模型,尚未实施,不适用

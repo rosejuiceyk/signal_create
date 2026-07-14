@@ -17,6 +17,9 @@ class RandomContext:
 
     def __post_init__(self) -> None:
         """Create the root generator without touching NumPy global state."""
+        if isinstance(self.seed, bool) or not isinstance(self.seed, (int, np.integer)):
+            raise TypeError("seed must be an integer")
+        self.seed = int(self.seed)
         if self.seed < 0:
             raise ValueError("seed must be non-negative")
         self.seed_sequence = np.random.SeedSequence(self.seed)

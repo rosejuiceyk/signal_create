@@ -26,8 +26,9 @@
 6. 常量基线、高斯白噪声、可选低频漂移。
 7. 模拟电压裁剪、ADC 位数/量程/偏置和量化、饱和标记。
 8. 特征提取：峰值、积分电荷、`rise_time_10_90_s`、`fall_time_90_10_s`。
-9. 分块 HDF5 连续写入；支持 `100~250 MS/s`。
+9. 分块 HDF5 连续写入；同时保存软件裁剪前诊断电压和裁剪后 ADC 输入电压，支持 `100~250 MS/s`。
 10. CLI `simulate-waveform`。
+11. 只读 CLI `plot-waveform`，用于从 Phase 2 HDF5 导出人工审核 PNG，不改变 HDF5 内容。
 
 ## 重要实现要求
 
@@ -54,13 +55,15 @@
 - 分块/整段一致性；
 - ADC 映射、裁剪与饱和标记；
 - 固定 seed 下噪声可复现。
+- 波形 PNG 可读，优先使用裁剪前诊断电压显示全程包络和事件附近细节，同时显示 ADC 细节，且不遗漏窄脉冲。
 
 建议命令：
 
 ```bash
-pytest -q tests/test_pulse_kernel.py tests/test_renderers.py tests/test_digitizer.py
+pytest -q tests/test_pulse_kernel.py tests/test_renderers.py tests/test_digitizer.py tests/test_waveform_plot.py
 he3sim simulate-waveform -c configs/demo_minimal.yaml -o outputs/phase02_waveform.h5
 he3sim inspect outputs/phase02_waveform.h5
+he3sim plot-waveform outputs/phase02_waveform.h5 -o outputs/phase02_waveform.png
 ```
 
 ## 可直接发送给 Codex 的执行提示词

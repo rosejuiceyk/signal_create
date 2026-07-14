@@ -36,3 +36,9 @@ def test_random_context_rejects_negative_inputs() -> None:
         RandomContext(-1)
     with pytest.raises(ValueError, match="count"):
         RandomContext(1).spawn(-1)
+
+
+@pytest.mark.parametrize("seed", [True, 1.5, "1", np.nan])
+def test_random_context_rejects_non_integer_seeds(seed: object) -> None:
+    with pytest.raises(TypeError, match="integer"):
+        RandomContext(seed)  # type: ignore[arg-type]

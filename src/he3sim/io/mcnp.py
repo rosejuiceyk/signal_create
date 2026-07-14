@@ -1,4 +1,4 @@
-"""MCNP spectrum-import contract and an intentionally unavailable Phase 0 stub."""
+"""MCNP spectrum-import contract and an intentionally unavailable stub."""
 
 from __future__ import annotations
 
@@ -21,5 +21,5 @@ class MCNPSpectrumImporterStub:
     """Explicit non-implementation used until the MCNP integration phase."""
 
     def load(self, path: Path) -> npt.NDArray[np.float64]:
-        """Reject MCNP import during Phase 0."""
-        raise NotImplementedError(f"MCNP import is not implemented in Phase 0: {path}")
+        """Reject MCNP import through Phase 1."""
+        raise NotImplementedError(f"MCNP import is not implemented through Phase 1: {path}")

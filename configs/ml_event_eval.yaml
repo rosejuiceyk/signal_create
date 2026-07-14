@@ -1,0 +1,44 @@
+base_config_path: demo_minimal.yaml
+checkpoint_path: ../outputs/phase05_training/checkpoint_latest.pt
+device: auto
+seed: 20260715
+replicates_per_rate: 256
+expected_events_per_window: 32.0
+max_events_per_window: 512
+standard_rates_cps:
+  - 10.0
+  - 30.0
+  - 100.0
+  - 300.0
+  - 1000.0
+  - 3000.0
+  - 10000.0
+  - 30000.0
+  - 100000.0
+  - 300000.0
+  - 1000000.0
+  - 3000000.0
+  - 10000000.0
+interpolation_rates_cps:
+  - 17.32050807568877
+  - 54.772255750516614
+  - 173.20508075688772
+  - 547.7225575051662
+  - 1732.0508075688772
+  - 5477.2255750516615
+  - 17320.508075688773
+  - 54772.25575051661
+  - 173205.08075688774
+  - 547722.5575051662
+  - 1732050.8075688772
+  - 5477225.575051662
+thresholds:
+  maximum_rate_relative_bias: 0.12
+  maximum_fano_error: 0.35
+  maximum_interval_ks: 0.12
+  maximum_interval_lag1_abs: 0.12
+  maximum_event_type_tv: 0.10
+  maximum_energy_quantile_error: 0.12
+  maximum_amplitude_quantile_error: 0.12
+  maximum_tau_quantile_relative_error: 0.12
+  maximum_energy_amplitude_correlation_error: 0.15

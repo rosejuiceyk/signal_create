@@ -2,7 +2,7 @@
   "$defs": {
     "ADCConfig": {
       "additionalProperties": false,
-      "description": "Placeholder analog-to-digital converter configuration.",
+      "description": "Uniform ADC quantization configuration.",
       "properties": {
         "enabled": {
           "default": true,
@@ -10,7 +10,7 @@
           "type": "boolean"
         },
         "bits": {
-          "$ref": "#/$defs/ParameterValue_int_"
+          "$ref": "#/$defs/ParameterValue_Annotated_int__Strict_strict_True___"
         },
         "input_min_V": {
           "$ref": "#/$defs/ParameterValue_float_"
@@ -59,7 +59,7 @@
     },
     "BaselineConfig": {
       "additionalProperties": false,
-      "description": "Placeholder baseline configuration.",
+      "description": "Constant baseline configuration.",
       "properties": {
         "enabled": {
           "default": true,
@@ -76,9 +76,39 @@
       "title": "BaselineConfig",
       "type": "object"
     },
+    "DatasetConfig": {
+      "additionalProperties": false,
+      "description": "Phase 3 bounded continuous-region and HDF5 storage controls.",
+      "properties": {
+        "continuous_duration_s": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "max_windows": {
+          "$ref": "#/$defs/ParameterValue_Annotated_int__Strict_strict_True___"
+        },
+        "compression": {
+          "default": "gzip",
+          "title": "Compression",
+          "type": "string"
+        },
+        "compression_level": {
+          "default": 4,
+          "maximum": 9,
+          "minimum": 0,
+          "title": "Compression Level",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "continuous_duration_s",
+        "max_windows"
+      ],
+      "title": "DatasetConfig",
+      "type": "object"
+    },
     "DeadTimeConfig": {
       "additionalProperties": false,
-      "description": "Placeholder dead-time configuration; no filtering is implemented.",
+      "description": "Observation-layer dead-time configuration.",
       "properties": {
         "mode": {
           "$ref": "#/$defs/DeadTimeMode",
@@ -106,7 +136,7 @@
     },
     "EnergySpectrumConfig": {
       "additionalProperties": false,
-      "description": "Declarative placeholder for a future He-3 spectrum provider.",
+      "description": "Parameters for the Phase 1 He-3 deposited-energy mixture model.",
       "properties": {
         "provider": {
           "default": "parametric_he3",
@@ -116,32 +146,84 @@
         "full_energy_keV": {
           "$ref": "#/$defs/ParameterValue_float_"
         },
+        "full_energy_sigma_keV": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
         "full_energy_fraction": {
           "$ref": "#/$defs/ParameterValue_float_"
         },
         "proton_wall_fraction": {
           "$ref": "#/$defs/ParameterValue_float_"
         },
+        "proton_wall_min_keV": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "proton_wall_max_keV": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "proton_wall_alpha": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "proton_wall_beta": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
         "triton_wall_fraction": {
           "$ref": "#/$defs/ParameterValue_float_"
         },
+        "triton_wall_min_keV": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "triton_wall_max_keV": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "triton_wall_alpha": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "triton_wall_beta": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
         "double_wall_fraction": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "double_wall_min_keV": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "double_wall_max_keV": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "double_wall_alpha": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "double_wall_beta": {
           "$ref": "#/$defs/ParameterValue_float_"
         }
       },
       "required": [
         "full_energy_keV",
+        "full_energy_sigma_keV",
         "full_energy_fraction",
         "proton_wall_fraction",
+        "proton_wall_min_keV",
+        "proton_wall_max_keV",
+        "proton_wall_alpha",
+        "proton_wall_beta",
         "triton_wall_fraction",
-        "double_wall_fraction"
+        "triton_wall_min_keV",
+        "triton_wall_max_keV",
+        "triton_wall_alpha",
+        "triton_wall_beta",
+        "double_wall_fraction",
+        "double_wall_min_keV",
+        "double_wall_max_keV",
+        "double_wall_alpha",
+        "double_wall_beta"
       ],
       "title": "EnergySpectrumConfig",
       "type": "object"
     },
     "NoiseConfig": {
       "additionalProperties": false,
-      "description": "Placeholder noise configuration.",
+      "description": "White-noise and optional stationary AR(1) drift configuration.",
       "properties": {
         "enabled": {
           "default": true,
@@ -155,10 +237,18 @@
           "default": false,
           "title": "Low Frequency Drift Enabled",
           "type": "boolean"
+        },
+        "low_frequency_drift_rms_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "low_frequency_drift_correlation_s": {
+          "$ref": "#/$defs/ParameterValue_float_"
         }
       },
       "required": [
-        "white_noise_rms_V"
+        "white_noise_rms_V",
+        "low_frequency_drift_rms_V",
+        "low_frequency_drift_correlation_s"
       ],
       "title": "NoiseConfig",
       "type": "object"
@@ -200,6 +290,28 @@
             }
           ],
           "default": null
+        },
+        "min_duration_s": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "max_duration_s": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -217,6 +329,80 @@
       ],
       "title": "ParameterStatus",
       "type": "string"
+    },
+    "ParameterValue_Annotated_int__Strict_strict_True___": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "status": {
+          "$ref": "#/$defs/ParameterStatus"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "reviewed_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed By"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed At"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "value",
+        "status"
+      ],
+      "title": "ParameterValue[Annotated[int, Strict(strict=True)]]",
+      "type": "object"
     },
     "ParameterValue_float_": {
       "additionalProperties": false,
@@ -368,7 +554,7 @@
     },
     "PulseShapeConfig": {
       "additionalProperties": false,
-      "description": "Time constants for the future peak-normalized double exponential.",
+      "description": "Time constants for the peak-normalized double exponential.",
       "properties": {
         "tau_r_s": {
           "$ref": "#/$defs/ParameterValue_float_"
@@ -399,7 +585,7 @@
           "type": "string"
         },
         "seed": {
-          "$ref": "#/$defs/ParameterValue_int_"
+          "$ref": "#/$defs/ParameterValue_Annotated_int__Strict_strict_True___"
         }
       },
       "required": [
@@ -429,7 +615,7 @@
     },
     "TriggerConfig": {
       "additionalProperties": false,
-      "description": "Placeholder threshold-trigger configuration.",
+      "description": "Threshold trigger and fixed event-window configuration.",
       "properties": {
         "enabled": {
           "default": false,
@@ -447,20 +633,69 @@
         },
         "min_hold_s": {
           "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "pre_trigger_s": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "post_trigger_s": {
+          "$ref": "#/$defs/ParameterValue_float_"
         }
       },
       "required": [
         "polarity",
         "threshold_V",
         "hysteresis_V",
-        "min_hold_s"
+        "min_hold_s",
+        "pre_trigger_s",
+        "post_trigger_s"
       ],
       "title": "TriggerConfig",
+      "type": "object"
+    },
+    "WaveformRenderer": {
+      "description": "Available Phase 2 continuous-waveform rendering backends.",
+      "enum": [
+        "direct_sparse",
+        "recursive_fixed_tau",
+        "auto"
+      ],
+      "title": "WaveformRenderer",
+      "type": "string"
+    },
+    "WaveformSynthesisConfig": {
+      "additionalProperties": false,
+      "description": "Bounded block rendering and analog clipping configuration.",
+      "properties": {
+        "renderer": {
+          "$ref": "#/$defs/WaveformRenderer",
+          "default": "auto"
+        },
+        "max_samples_per_block": {
+          "$ref": "#/$defs/ParameterValue_Annotated_int__Strict_strict_True___"
+        },
+        "save_analog": {
+          "default": true,
+          "title": "Save Analog",
+          "type": "boolean"
+        },
+        "analog_clip_min_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        },
+        "analog_clip_max_V": {
+          "$ref": "#/$defs/ParameterValue_float_"
+        }
+      },
+      "required": [
+        "max_samples_per_block",
+        "analog_clip_min_V",
+        "analog_clip_max_V"
+      ],
+      "title": "WaveformSynthesisConfig",
       "type": "object"
     }
   },
   "additionalProperties": false,
-  "description": "Top-level Phase 0 configuration contract.",
+  "description": "Top-level configuration contract used through Phase 3.",
   "properties": {
     "schema_version": {
       "default": "1",
@@ -485,6 +720,9 @@
     "pulse_shape": {
       "$ref": "#/$defs/PulseShapeConfig"
     },
+    "waveform": {
+      "$ref": "#/$defs/WaveformSynthesisConfig"
+    },
     "baseline": {
       "$ref": "#/$defs/BaselineConfig"
     },
@@ -499,6 +737,9 @@
     },
     "dead_time": {
       "$ref": "#/$defs/DeadTimeConfig"
+    },
+    "dataset": {
+      "$ref": "#/$defs/DatasetConfig"
     }
   },
   "required": [
@@ -508,11 +749,13 @@
     "spectrum",
     "amplitude",
     "pulse_shape",
+    "waveform",
     "baseline",
     "noise",
     "adc",
     "trigger",
-    "dead_time"
+    "dead_time",
+    "dataset"
   ],
   "title": "He3SimConfig",
   "type": "object"

@@ -58,9 +58,15 @@
 
 ```bash
 pytest -q tests/test_trigger.py tests/test_deadtime.py tests/test_dataset_io.py
+pytest -q tests/integration/test_phase3.py
 he3sim generate-dataset -c configs/demo_minimal.yaml -o outputs/phase03_dataset
 he3sim validate-physics -c configs/demo_minimal.yaml -o outputs/phase03_validation
+he3sim inspect outputs/phase03_dataset/dataset.h5
 ```
+
+实现说明：Phase 3 高计数率路径按连续时间块执行精确的 Poisson-count+sorted-uniform 抽样，真值
+marks 生成后立即追加到可扩展 HDF5 表。连续区使用固定时间常数递推后端并保持跨块状态；事件视界
+可以长于连续区。连续区外真值保留，但 `block_id/sample_index=-1`，不得解释为已生成连续波形。
 
 ## 可直接发送给 Codex 的执行提示词
 
