@@ -1,0 +1,43 @@
+schema_version: "1"
+model_status: synthetic_scaffold
+physical_config_path: demo_minimal.yaml
+true_rates_cps:
+  - 100000.0
+  - 1000000.0
+  - 10000000.0
+sample_rate_hz: 100000000.0
+patch_samples: 1024
+event_guard_samples: 2
+interference:
+  parameter_status: synthetic_demo
+  source: Artificial Phase 6S disturbances for software rehearsal; not measured hardware data.
+  white_noise_rms_V: 0.0001
+  colored_noise_rms_V: 0.00015
+  colored_noise_ar: 0.92
+  baseline_wander_amplitude_V: 0.004
+  baseline_cycles_per_patch: 1.5
+  ringing_amplitude_V: 0.003
+  ringing_decay_samples: 40.0
+  ringing_period_samples: 12.0
+  nonlinear_tail_amplitude_V: 0.002
+  nonlinear_scale_V: 0.05
+  max_abs_residual_V: 0.02
+model:
+  hidden_channels: 16
+  kernel_size: 5
+  dilations: [1, 2, 4, 8]
+  input_scale_V: 0.25
+training:
+  seed: 20260715
+  device: auto
+  epochs: 30
+  batch_size: 8
+  learning_rate: 0.002
+  train_runs_per_rate: 12
+  validation_runs_per_rate: 4
+  test_runs_per_rate: 4
+  huber_weight: 1.0
+  spectral_weight: 0.05
+  baseline_weight: 0.5
+  event_guard_weight: 1.0
+  residual_energy_weight: 0.0001

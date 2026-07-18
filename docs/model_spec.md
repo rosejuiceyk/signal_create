@@ -1,3 +1,4 @@
+
 # Phase 0/1/2 数学与数据契约
 
 本文冻结 `he3-pulse-sim` 的基础数学、单位、分层和接口约定。Phase 2 已在 Phase 1 真值事件
@@ -128,7 +129,7 @@ $$
 `0` 到 `2^bits-1` 的无符号整数码；当前存储约束为 1–16 位。饱和掩码合并模拟裁剪和 ADC
 输入越界。简单裁剪不表示真实前放饱和恢复，任何此类恢复模型仍等待实测标定。
 
-Phase 2/Web HDF5 同时保存软件裁剪前的 `/blocks/preclip_analog_samples` 与裁剪后的
+Phase 2 HDF5 同时保存软件裁剪前的 `/blocks/preclip_analog_samples` 与裁剪后的
 `/blocks/analog_samples`。前者只用于检查高堆积下的合成波形变化，后者才是 CSV 输出与 ADC
 量化的输入；这两份数据不能被解释为已标定前放的饱和恢复模型。
 
@@ -142,38 +143,20 @@ Phase 2/Web HDF5 同时保存软件裁剪前的 `/blocks/preclip_analog_samples`
 不得使用 NumPy 全局随机状态。未来多进程入口必须位于 `if __name__ == "__main__"` 保护下，
 并兼容 Windows `spawn`。
 
-## Phase 5 条件标记事件研究模型
+## 已归档 Web/ML 合同
 
-网络 A 只拟合由既有精确物理生成器产生的 `synthetic_demo` 事件窗口。给定计数率
-`lambda`、窗口长度 `T` 和配置编码 `c`，计数头为：
+原 Phase 5 网络 A、Phase 6 网络 C 与 Phase 6S 合成残差合同已移入 `archive/`。活动数学合同不再
+包含神经网络输入、输出或 checkpoint；齐次泊松和参数化 marks 继续由精确物理代码生成。
 
-$$
-N \sim \operatorname{Poisson}\!\left(\exp\left[\log(\lambda T)+r_N(\lambda,T,c)\right]\right),
-$$
+## Phase 4Q 数据资格边界
 
-其中神经网络残差 `r_N` 被限制在有限范围。间隔头是正值指数混合：
+在采样轴得到独立确认前，DT5790 导出波形只允许使用导出样本索引和 `ADC_counts`。必须保持：
 
-$$
-p(\Delta t\mid\lambda,T,c)=\sum_{k=1}^{K}\pi_k\rho_k
-\exp(-\rho_k\Delta t),\qquad \Delta t>0.
-$$
-
-推理时抽取 `N+1` 个正间隔 `d_j`，再构造窗口内严格有序时间：
-
-$$
-t_i=T\frac{\sum_{j=1}^{i}d_j}{\sum_{j=1}^{N+1}d_j},\qquad i=1,\ldots,N.
-$$
-
-事件类型使用 categorical likelihood。给定类型 `z` 后，能量通过该类型配置支持域
-`[E_{min,z},E_{max,z}]` 上的 logistic-normal 密度生成；零权重类型被屏蔽。幅值、`tau_r` 和
-正衰减差 `tau_d-tau_r` 使用 log-normal 条件密度，因此输出始终满足：
-
-$$
-E\ge 0,\qquad A_{peak}>0,\qquad \tau_d>\tau_r>0.
-$$
-
-训练目标是各分布头负对数似然之和，不以 MSE 代替密度学习。模型状态固定为
-`experimental`；即使统计门槛通过，也不自动替代 exact Poisson + parametric spectrum 基线。
+- `sample_interval_s = null`；
+- 不自动删除严格相邻重复样本；
+- `ENERGY` 只保存为原始 ADC channel，不解释为已验证 keV；
+- 采集软件粒子标签只保存为原始字段，标准标签保持 `unknown/candidate`；
+- QC 阈值标记为 `provisional`，缺少证据的项目使用 `not_evaluable`。
 
 ## 外部接口边界
 

@@ -1,3 +1,4 @@
+
 # He-3 核反应堆探测器脉冲信号模拟系统
 ## Codex 总方案、阶段计划与验收提示词
 
@@ -22,9 +23,7 @@
 - 首版使用参数化 He-3 理论能谱，后续接入 MCNP 输出；
 - 首版脉冲形状使用归一化双指数模型；
 - 后续使用示波器采集的孤立脉冲和多个已知计数率下的连续波形进行标定；
-- 神经网络研究路线包括：
-  1. 条件事件参数生成模型 A；
-  2. 物理波形残差生成模型 C。
+- 神经网络研究路线只保留物理波形残差模型 C；原条件事件参数网络 A 已由用户退役。
 
 最终软件应能回答：给定真实计数率、采样率、时间窗和探测器/电子学配置，系统能否生成统计正确、可解释、可复现，并逐步接近实测前放输出的连续脉冲波形？
 
@@ -42,11 +41,11 @@
 
 死时间影响观测事件，不得默认从真实事件流或连续波形中删除事件。
 
-## 2.2 物理模型是基线，神经网络不能替代已知的精确采样器
+## 2.2 精确物理基线不得被黑盒替代
 
-当前非相关中子到达过程已有精确的泊松采样方法。网络 A 只能作为研究对照或未来非理想/相关事件模型，不能默认替代泊松生成器。
-
-若神经网络不能在物理统计、实测一致性或生成效率上优于相应基线，则必须保持关闭，不得为了“使用 AI”而进入默认链路。
+当前非相关中子到达过程使用精确泊松采样。已归档的 Web/ML 路线不得重新接入活动代码。
+后续相关中子事件生成与噪声分析必须以可验证的物理过程和解析/统计基线为核心，详见
+`docs/ROADMAP_v2.md`。
 
 ## 2.3 所有临时参数显式标记
 
@@ -58,16 +57,10 @@
 
 输出文件必须保存参数状态和配置哈希。
 
-## 2.4 先验收物理，再验收实测一致性，最后验收神经网络
+## 2.4 分阶段验收
 
-阶段顺序不可颠倒：
-
-1. 泊松事件、能谱和波形数学正确；
-2. 堆积、触发、死时间和数据格式正确；
-3. 与示波器数据比较；
-4. 再训练和评价神经网络。
-
----
+先验证事件、波形、触发、死时间与数据格式，再进行实测数据资格和标定。任何相关中子噪声新阶段
+都必须单独计划、自动验收并等待用户人工审核，不得在本次精简中提前实现。
 
 # 三、理论模型
 
@@ -299,83 +292,21 @@ $$
 
 ---
 
+
 # 四、软件架构
 
-```text
-he3-pulse-sim/
-├── pyproject.toml
-├── README.md
-├── LICENSE
-├── CHANGELOG.md
-├── configs/
-│   ├── demo_minimal.yaml
-│   ├── provisional_he3.yaml
-│   └── schemas/
-├── src/he3sim/
-│   ├── __init__.py
-│   ├── cli.py
-│   ├── config.py
-│   ├── logging.py
-│   ├── types.py
-│   ├── physics/
-│   │   ├── rate_profiles.py
-│   │   ├── arrivals.py
-│   │   ├── spectra.py
-│   │   ├── amplitude.py
-│   │   └── pulse_models.py
-│   ├── synthesis/
-│   │   ├── renderers.py
-│   │   ├── streaming.py
-│   │   ├── noise.py
-│   │   ├── baseline.py
-│   │   └── digitizer.py
-│   ├── acquisition/
-│   │   ├── trigger.py
-│   │   ├── dead_time.py
-│   │   └── event_matching.py
-│   ├── io/
-│   │   ├── hdf5.py
-│   │   ├── zarr_adapter.py
-│   │   ├── oscilloscope.py
-│   │   ├── mcnp.py
-│   │   └── dt5800_stub.py
-│   ├── analysis/
-│   │   ├── pulse_features.py
-│   │   ├── counting_stats.py
-│   │   ├── spectrum_metrics.py
-│   │   ├── waveform_metrics.py
-│   │   └── reports.py
-│   └── ml/
-│       ├── datasets.py
-│       ├── event_generator/
-│       ├── residual_generator/
-│       └── evaluation.py
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   ├── statistical/
-│   └── regression/
-├── notebooks/
-├── scripts/
-├── docs/
-└── outputs/  # gitignore
-```
+活动源码采用 `src/he3sim/` 布局：
 
-技术要求：
+- `physics/`：到达、能谱、幅值、脉冲与真值事件；
+- `synthesis/`：连续波形、基线、噪声、数字化与数据集；
+- `acquisition/`：触发、死时间与事件关联；
+- `analysis/`：统计、特征、报告和绘图；
+- `io/`：HDF5、示波器、MCNP 与硬件 stub；
+- `calibration/`：只读数据资格、来源追溯和 QC；
+- `cli.py`：统一活动命令入口。
 
-- Python 包采用 `src/` 布局和 `pyproject.toml`；
-- 核心代码使用类型标注；
-- 配置使用 YAML + Pydantic 校验；
-- 随机数统一使用 `numpy.random.Generator`，禁止散落使用全局随机状态；
-- Windows 多进程代码必须 `spawn` 安全；
-- CPU 算力机使用进程级并行，但工作进程数根据 32 GB 内存受控；
-- PyTorch 自动检测 CUDA，CPU 仍能运行小规模测试；
-- 物理仿真核心不得依赖 PyTorch；
-- Phase 3.5 仅允许实现绑定本机、调用既有物理模型的 Streamlit Web 控制界面；
-- 桌面 GUI、托管 Web、远程多用户服务、DT5800 SDK 和实时硬件输出不实现；
-- `dt5800_stub.py` 只定义未来适配器协议和明确的 `NotImplementedError`。
-
----
+原 `app/` 与 `ml/` 已移入 `archive/`，不参与打包、导入或活动测试。物理核心不依赖 Web 或
+机器学习框架。桌面 GUI、托管服务、远程多用户服务、DT5800 SDK 和实时硬件输出不实现。
 
 # 五、数据格式
 
@@ -446,21 +377,9 @@ is_saturated
 
 # 六、统一 CLI
 
-最终至少提供：
-
-```bash
-he3sim validate-config -c configs/demo_minimal.yaml
-he3sim simulate -c configs/demo_minimal.yaml -o outputs/demo.h5
-he3sim inspect outputs/demo.h5
-he3sim validate-physics -c configs/demo_minimal.yaml -o outputs/validation/
-he3sim generate-dataset -c configs/provisional_he3.yaml -o outputs/dataset/
-he3sim analyze-scope --input <path> --profile generic_csv -o outputs/calibration/
-he3sim train-event-model -c configs/ml_event.yaml
-he3sim train-residual-model -c configs/ml_residual.yaml
-he3sim compare-models -c configs/evaluation.yaml -o outputs/comparison/
-```
-
----
+活动命令包括 `validate-config`、`simulate-events`、`validate-arrivals`、
+`simulate-waveform`、`inspect`、`plot-waveform`、`generate-dataset`、
+`validate-physics` 和 `qualify-acquisition`。归档 Web/ML 命令不得出现在帮助输出中。
 
 # 七、阶段交付与强制门禁
 
@@ -551,29 +470,9 @@ he3sim compare-models -c configs/evaluation.yaml -o outputs/comparison/
 - 高计数率使用分块流式处理，内存不会随总时长线性无限增长；
 - 提供性能报告，但首版不设置跨机器固定秒数门槛。
 
-## 阶段 3.5：本地 Web 波形生成界面
+## 已归档阶段
 
-入口条件：Phase 0～3 已通过用户人工审核；真实示波器数据尚未到位，Phase 4 保持阻塞。
-
-交付：
-
-- 仅绑定本机的 Streamlit 交互界面；
-- 用户输入真实计数率、采样率、观察时间和随机种子；
-- 生成前显示预期事件数、采样点数和原始数据量估算，并根据计数率和采样率给出最大观察时间；
-- 调用既有 Phase 1～2 路径生成连续波形，不复制或修改物理核心；
-- 输出同时保存裁剪前诊断电压与裁剪后电压的 HDF5、两列裁剪后时间/电压 CSV、
-  自适应纵轴 PNG、实际运行配置和采样信息 JSON；
-- 所有未标定物理与电子学参数继续来自 `synthetic_demo` 基础配置并保存在输出元数据中，
-  页面不强制重复显示状态警告卡片。
-
-通过条件：
-
-- 所有输入项显示允许范围，输入范围和资源上限在前后端同时校验；
-- 相同配置和 seed 的核心输出可复现；
-- HDF5、CSV、PNG、配置和采样信息相互一致；高计数率图使用裁剪前诊断电压展示波形变化，
-  事件/饱和标记数量有界；
-- 自动化测试可在无浏览器、无网络条件下验证界面和后端；
-- 界面不实现示波器标定、触发参数编辑、硬件控制或远程服务。
+原 Phase 3.5 本地 Web 已归档，不再提供运行入口。
 
 ## 阶段 4：示波器数据标定与真实模板
 
@@ -596,81 +495,11 @@ he3sim compare-models -c configs/evaluation.yaml -o outputs/comparison/
 - 拟合失败事件有 QC 标记，不静默纳入模板；
 - 训练、验证、测试按采集 run 划分，防止相邻片段泄漏。
 
-## 阶段 5：神经网络 A——条件事件参数生成
+## 已归档的 Web/ML 路线
 
-定位：研究对照，不替代精确泊松基线。
-
-Phase 4 的真实标定分布是首选训练依据，但不是纯合成研究对照的硬前置条件。若用户明确推迟
-Phase 4，Phase 5 只能使用 `synthetic_demo` 物理生成器作为训练目标，模型必须保持
-`experimental`，不得解释为已学习真实设备分布。
-
-建议基线架构：条件标记时间点过程或强度无关的时间间隔模型。
-
-输入：
-
-- `log10(true_rate_cps)`；
-- 时间窗长度；
-- 探测器配置编码；
-- 随机潜变量。
-
-输出：
-
-- 可变事件数；
-- 单调递增到达时间；
-- `energy/amplitude, tau_r, tau_d, event_type` 等 marks。
-
-最低实现：
-
-- 事件数头：Poisson/Negative-Binomial 分布参数；
-- 时间间隔头：正值分布混合模型或 normalizing flow；
-- mark 头：条件混合密度网络或 flow；
-- 使用似然训练，不只用 MSE；
-- 物理约束：时间有序、间隔正、能量和时间常数合法。
-
-通过条件：
-
-- 在纯泊松合成数据上恢复目标计数率；
-- 计数 Fano factor、间隔分布和自相关不劣于设定阈值；
-- 幅值与时间参数边缘分布、联合分布通过比较；
-- 对保留的中间计数率进行插值测试；
-- 与精确物理生成器对比速度和准确度；
-- 若不优于物理基线，模型保持实验状态，不进入默认链路。
-
-## 阶段 6：神经网络 C——物理残差生成与最终比较
-
-训练策略：先伪配对，后续才考虑非配对。
-
-伪配对流程：
-
-1. 从实测波形提取事件参数；
-2. 使用相同事件参数重建物理波形；
-3. 以 `real - physical` 作为残差目标；
-4. 网络输入物理波形、计数率和配置，输出受约束残差；
-5. 最终波形 `y = physical + residual`。
-
-首选基线：轻量 1D 膨胀卷积 TCN，使用 FiLM 或条件归一化注入计数率；后续可比较 1D U-Net。不要一开始使用大型扩散模型。
-
-损失至少包含：
-
-- 时域 Huber/L1；
-- 多分辨率频谱或 STFT 损失；
-- 无事件区基线/PSD 损失；
-- 事件保持损失；
-- 残差能量正则；
-- 可选幅值、上升时间和积分电荷统计损失。
-
-通过条件：
-
-- 不显著改变输入的事件到达率和间隔分布；
-- 不无故新增或删除真实事件；
-- 在留出采集 run 与留出计数率上改善基线噪声、PSD、脉冲形状和联合参数分布；
-- 与三条链路对比：
-  1. 纯物理；
-  2. 物理事件 + 残差 C；
-  3. 网络 A 事件 + 物理合成 + 残差 C；
-- 若模型只改善视觉效果而破坏物理统计，判定失败。
-
----
+原 Phase 5 网络 A、Phase 6 网络 C 与 Phase 6S 合成预演均已归档。代码、配置、依赖和测试只保留在
+`archive/` 供审计，不得作为活动生成器、默认链路或后续阶段入口。新的科研主线以
+`docs/ROADMAP_v2.md` 的相关中子噪声物理路线为准。
 
 # 八、评价指标
 
@@ -703,11 +532,10 @@ Phase 4，Phase 5 只能使用 `synthetic_demo` 物理生成器作为训练目�
 - 高计数率基线抬升和堆积形态；
 - 分块边界连续性。
 
-## 8.4 泛化
+## 8.4 可复现性与适用边界
 
-训练计数率从 `log-uniform(10,1e7)` 抽样；验证与测试使用固定标准点及未直接训练的中间点。必须按采集 run 和底层事件来源切分，禁止同一长波形的相邻切片跨集合。
-
----
+所有验证必须记录配置哈希、seed、参数状态和数据来源；统计结果必须报告有限样本不确定度，
+不得把 `synthetic_demo` 结论外推为真实设备性能。
 
 # 九、给 Codex 的总控提示词
 
@@ -727,10 +555,10 @@ Phase 4，Phase 5 只能使用 `synthetic_demo` 物理生成器作为训练目�
 8. 支持白噪声、基线、低频漂移、裁剪、ADC 量化、正负脉冲触发、延长型和非延长型死时间。
 9. 主数据格式为 HDF5，使用分块、压缩和拼接数组+索引表，不要大量使用可变长对象。
 10. 工程必须使用 pyproject.toml、src 布局、YAML+Pydantic、类型标注、pytest、结构化日志和统一 CLI。
-11. Windows 11 + NVIDIA GPU 是开发和训练主环境；无 GPU 的多核算力机用于批量 CPU 仿真。物理核心不得依赖 PyTorch，多进程必须 Windows spawn 安全。
-12. Phase 3.5 只实现绑定本机的 Streamlit 控制界面；当前不实现桌面 GUI、托管 Web、远程多用户服务、DT5800 控制或实时硬件输出。DT5790 文件不是核心依赖。
+11. Windows 11 是开发环境；多核算力机可用于批量 CPU 仿真，多进程必须 Windows spawn 安全。
+12. Web 与机器学习路线已归档；当前不实现桌面 GUI、托管服务、远程多用户服务、DT5800 控制或实时硬件输出。
 13. 当前所有设备参数不完整。演示值必须标记 synthetic_demo；有限数据拟合值标记 provisional；只有人工确认后才是 validated。
-14. 神经网络分两条研究路线：A 为条件标记时间点过程生成事件参数，C 为在物理波形上学习残差。A 不得替代精确泊松基线，除非量化评价证明有价值；C 不得改变事件统计。
+14. 精确泊松生成器保留为非相关基线；相关中子噪声路线必须另行审核，不得在本次精简中实现。
 15. 严格按阶段交付。每一阶段完成后停止，输出变更摘要、目录树、运行命令、测试结果、已知限制和下一阶段入口条件。未经用户确认不得自动进入下一阶段。
 
 代码质量要求：
@@ -835,86 +663,10 @@ DT5800、MCNP、示波器导入只定义 Protocol/stub，不实现业务。
 完成后停止，不进入阶段 3.5。
 ```
 
-## 阶段 3.5 提示词
+## 后续路线提示
 
-```text
-执行阶段 3.5：将 Phase 1～2 已有功能集成为本地 Streamlit Web 界面。
-
-用户可填写真实计数率、采样率、观察时间和随机种子。生成前必须展示预期事件数、
-采样点数和数据量估算，并使用明确资源上限。后端复用既有连续波形生成和绘图 API，
-输出 HDF5、PNG、实际配置 YAML 和采样信息 JSON。所有未标定参数继续标记
-synthetic_demo，不新增或暗示真实设备参数。
-
-使用无浏览器测试验证界面；更新用户手册和 STATUS 后停止，等待人工审核。
-不得进入阶段 4，不得实现示波器标定、远程服务或硬件控制。
-```
-
-## 阶段 4 提示词
-
-```text
-执行阶段 4：建立示波器数据标定流水线。若当前没有真实示波器文件，先用合成 fixture 完成代码和测试，真实标定结果不得伪造。
-
-要求：
-- profile 驱动的 CSV/NPZ 导入，不硬编码厂商格式；
-- 采样率、时间列、电压列、单位、极性配置；
-- 基线和噪声估计；
-- 脉冲检测、孤立脉冲筛选、对齐和归一化；
-- scipy 双指数拟合，输出不确定度/QC；
-- 统计 amplitude/tau_r/tau_d/rise/fall/charge 的边缘和联合分布；
-- 生成 provisional calibration YAML 和 HTML/Markdown 报告；
-- 人工确认流程，不自动转 validated；
-- 预留模板库生成器。
-
-按 acquisition run 划分训练/验证/测试，避免相邻片段泄漏。
-完成后停止，不进入阶段 5。
-```
-
-## 阶段 5 提示词
-
-```text
-执行阶段 5：实现神经网络 A，作为条件事件参数生成的研究对照。
-
-先写清研究假设：当前非相关中子已有精确泊松生成器，网络目标是验证能否学习有标记的事件联合分布和未来实测偏离，而不是为了替代公式。
-
-实现：
-- ConditionalMarkedEventGenerator 接口；
-- 输入 log10(rate)、window duration、detector config；
-- 事件数分布头；
-- 正值时间间隔的混合分布或 normalizing-flow 头；
-- energy/amplitude/tau_r/tau_d 的条件 mark 头；
-- 保证时间单调、参数合法；
-- 似然损失；
-- 训练、断点、推理、配置和 seed 记录；
-- CPU smoke test 与 CUDA 训练支持；
-- 与 exact Poisson + parametric spectrum 基线比较。
-
-评估：计数率偏差、Fano factor、间隔分布、自相关、mark 边缘/联合分布、留出计数率泛化和速度。
-若不优于或不能匹配物理基线，默认配置必须继续使用物理生成器。
-完成后停止，不进入阶段 6。
-```
-
-## 阶段 6 提示词
-
-```text
-执行阶段 6：实现神经网络 C 的伪配对物理残差学习，并完成三链路对比。
-
-实现：
-- 由实测事件提取参数并重建对应物理波形；
-- residual_target = real - physical；
-- 轻量 1D dilated TCN 基线，FiLM 条件为 log10(rate) 和 detector config；
-- 输入物理波形，输出残差，最终 y=physical+residual；
-- patch 数据加载，支持 8GB 显存；
-- Huber/L1、多分辨率 STFT、无事件区 PSD、事件保持和残差能量正则；
-- 保持事件时间、计数率、幅值和间隔统计；
-- 留出采集 run 和留出计数率评估；
-- 比较纯物理、物理+C、A+物理+C 三条链路；
-- 生成最终报告、模型卡和失败案例。
-
-不要在此阶段直接上大型扩散模型或无配对 GAN。只有伪配对基线通过后，才在文档中列为未来工作。
-完成后停止，并给出是否值得继续 DT5800/实时接口阶段的结论。
-```
-
----
+原 Phase 3.5/5/6 提示词已随阶段文档归档。后续只按 `docs/ROADMAP_v2.md` 制订新的独立阶段计划，
+且必须先等待用户确认。
 
 # 十一、建议的首批标准工况
 
@@ -943,6 +695,7 @@ synthetic_demo，不新增或暗示真实设备参数。
 - DT5800 硬件控制与波形下发；
 - 实时数字流；
 - MCNP 自动运行。
+
 
 但必须保留：`RateProfile`、`EnergySpectrumProvider`、恢复模型、示波器导入、MCNP 导入和 DT5800 适配器接口。
 

@@ -137,7 +137,8 @@ def validate_arrival_algorithms(
         )
     )
 
-    for algorithm, child_sequence in zip(ArrivalAlgorithm, child_sequences, strict=True):
+    for raw_algorithm, child_sequence in zip(ArrivalAlgorithm, child_sequences, strict=True):
+        algorithm = ArrivalAlgorithm(raw_algorithm)
         generator = arrival_generator_for(algorithm)
         rng = np.random.default_rng(child_sequence)
         counts = np.empty(replicates, dtype=np.int64)

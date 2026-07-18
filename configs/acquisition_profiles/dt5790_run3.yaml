@@ -1,0 +1,53 @@
+profile_name: dt5790_run3_phase4q
+parameter_status: provisional
+source: Existing DT5790 export structure; parsing contract only, not detector calibration.
+run_glob: run3_[0-9]*
+csv_delimiter: ";"
+csv_encoding: utf-8-sig
+info_encoding: gb18030
+samples_column: SAMPLES
+metadata_columns:
+  - BOARD
+  - CHANNEL
+  - TIMETAG
+  - ENERGY
+  - ENERGYSHORT
+  - FLAGS
+  - PROBE_CODE
+primary_variant: RAW
+variants:
+  RAW:
+    directory: RAW
+    file_glob: "*.CSV"
+  FILTERED:
+    directory: FILTERED
+    file_glob: "*.CSV"
+  UNFILTERED:
+    directory: UNFILTERED
+    file_glob: "*.CSV"
+info_file_glob: "*_info.txt"
+settings_file_glob: settings.xml
+info_patterns:
+  input_count: "Input counts = (?P<value>[0-9]+)"
+  input_rate_cps: "Input counts = [^\\n]*average rate \\(cps\\) = (?P<value>[0-9.]+)"
+xml_tags:
+  sample_time_raw: sampleTime
+  energy_max_bits_raw: energyMaxBits
+xml_parameter_keys:
+  channel_polarity_raw: SRV_PARAM_CH_POLARITY
+minimum_independent_runs_per_rate: 3
+qc:
+  parameter_status: provisional
+  source: Phase 4Q conservative index-domain screening; thresholds require human review.
+  baseline_fraction: 0.10
+  tail_fraction: 0.10
+  baseline_drift_sigma: 5.0
+  low_amplitude_snr: 5.0
+  tail_return_peak_fraction: 0.15
+  ringing_peak_fraction: 0.05
+  ringing_min_alternations: 4
+  duplicate_pair_fraction: 0.95
+  trigger_fraction: 0.10
+  min_pretrigger_exported_samples: 4
+  adc_min_count: null
+  adc_max_count: null

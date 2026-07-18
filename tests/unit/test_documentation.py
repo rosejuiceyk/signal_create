@@ -22,19 +22,43 @@ def test_markdown_is_utf8_and_uses_supported_display_math_delimiters() -> None:
         )
 
 
-def test_phase5_manual_commands_pin_environment_and_project_root() -> None:
-    """Phase 5 review commands must not depend on the outer cwd or a global entry point."""
+def test_retired_web_and_ml_routes_are_archived() -> None:
+    """Retired routes must remain auditable without being active package modules."""
+    for active_path in (
+        PROJECT_ROOT / "src" / "he3sim" / "app",
+        PROJECT_ROOT / "src" / "he3sim" / "ml",
+        PROJECT_ROOT / "docs" / "phases" / "phase_03_5_local_web.md",
+        PROJECT_ROOT / "docs" / "phases" / "phase_05_network_a.md",
+        PROJECT_ROOT / "docs" / "phases" / "phase_06_network_c.md",
+    ):
+        assert not active_path.exists()
 
-    manual = (PROJECT_ROOT / "docs" / "USER_MANUAL.md").read_text(encoding="utf-8")
-    phase5 = manual.split("## 9. Phase 5", maxsplit=1)[1].split("## 10. 如何提交", maxsplit=1)[0]
+    for archived_path in (
+        PROJECT_ROOT / "archive" / "src_app",
+        PROJECT_ROOT / "archive" / "src_ml",
+        PROJECT_ROOT / "archive" / "docs_phases" / "phase_03_5_local_web.md",
+        PROJECT_ROOT / "archive" / "docs_phases" / "phase_05_network_a.md",
+        PROJECT_ROOT / "archive" / "docs_phases" / "phase_06_network_c.md",
+    ):
+        assert archived_path.exists()
 
-    assert "Set-Location .\\he3_codex_context" in phase5
-    assert "Test-Path .\\pyproject.toml" in phase5
-    assert (
-        "conda run -n signal_create python -m he3sim train-event-model -c configs/ml_event.yaml"
-    ) in phase5
-    assert (
-        "conda run -n signal_create python -m he3sim compare-event-model "
-        "-c configs/ml_event_eval.yaml -o outputs/phase05_comparison"
-    ) in phase5
-    assert "he3sim compare-event-model `" not in phase5
+
+def test_active_cli_and_docs_do_not_advertise_archived_commands() -> None:
+    """Active entry points must not leave users on archived Web or ML paths."""
+    active_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (
+            PROJECT_ROOT / "src" / "he3sim" / "cli.py",
+            PROJECT_ROOT / "README.md",
+            PROJECT_ROOT / "docs" / "SOFTWARE_USER_MANUAL.md",
+        )
+    )
+    for command in (
+        "he3sim web",
+        "train-event-model",
+        "compare-event-model",
+        "rehearse-residual-model",
+    ):
+        assert command not in active_text
+
+    assert (PROJECT_ROOT / "docs" / "ROADMAP_v2.md").exists()

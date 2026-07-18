@@ -1,4 +1,4 @@
-"""Command-line interface through the experimental Phase 5 research model."""
+"""Command-line interface for physical simulation and read-only data qualification."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from he3sim.analysis.waveform_plot import (
     DEFAULT_MAX_OVERVIEW_POINTS,
     plot_waveform_hdf5,
 )
+from he3sim.calibration.qualification import qualify_acquisition
 from he3sim.config import WaveformRenderer, config_hash, load_config
 from he3sim.io.dataset import write_dataset_hdf5
 from he3sim.io.hdf5 import inspect_hdf5, write_true_events_hdf5, write_waveform_hdf5
@@ -37,7 +38,7 @@ from he3sim.synthesis.streaming import (
 
 app = typer.Typer(
     name="he3sim",
-    help="He-3 physical simulation, local Web, and experimental Phase 5 research tools.",
+    help="He-3 physical simulation and read-only acquisition qualification tools.",
     no_args_is_help=True,
 )
 
@@ -310,83 +311,44 @@ def validate_physics_command(
         raise typer.Exit(code=3)
 
 
-@app.command("web")
-def web_command(
-    port: Annotated[
-        int,
-        typer.Option(help="Loopback TCP port for the local Streamlit server."),
-    ] = 8501,
-    headless: Annotated[
-        bool,
-        typer.Option(help="Do not ask Streamlit to open a browser automatically."),
-    ] = False,
-) -> None:
-    """Launch the Phase 3.5 interface on 127.0.0.1 only."""
-    from he3sim.app.launcher import launch_local_web
-
-    try:
-        launch_local_web(port=port, headless=headless)
-    except ValueError as exc:
-        typer.echo(f"local Web launch failed: {exc}", err=True)
-        raise typer.Exit(code=2) from exc
-
-
-@app.command("train-event-model")
-def train_event_model_command(
-    config_path: Annotated[
+@app.command("qualify-acquisition")
+def qualify_acquisition_command(
+    input_root: Annotated[
         Path,
-        typer.Option("--config", "-c", help="Phase 5 event-model training YAML."),
+        typer.Option("--input", help="Read-only root containing acquisition run directories."),
     ],
-) -> None:
-    """Train and checkpoint experimental network A with likelihood objectives."""
-    try:
-        from he3sim.ml.config import load_event_model_training_config
-        from he3sim.ml.training import train_event_model
-
-        artifacts = train_event_model(load_event_model_training_config(config_path))
-    except ImportError as exc:
-        typer.echo("Phase 5 requires the optional 'ml' dependencies", err=True)
-        raise typer.Exit(code=2) from exc
-    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
-        typer.echo(f"event-model training failed: {exc}", err=True)
-        raise typer.Exit(code=2) from exc
-    typer.echo(f"checkpoint: {artifacts.checkpoint_path}")
-    typer.echo(f"model_card: {artifacts.model_card_path}")
-    typer.echo(f"training_summary: {artifacts.summary_path}")
-    typer.echo(f"device: {artifacts.device}")
-    typer.echo("model_status: experimental")
-    typer.echo("default_generator: exact_poisson_parametric_spectrum")
-
-
-@app.command("compare-event-model")
-def compare_event_model_command(
-    config_path: Annotated[
+    profile_path: Annotated[
         Path,
-        typer.Option("--config", "-c", help="Phase 5 evaluation YAML."),
+        typer.Option("--profile", help="Explicit Phase 4Q acquisition profile YAML."),
     ],
     output_directory: Annotated[
         Path,
-        typer.Option("--output", "-o", help="Directory for comparison reports."),
+        typer.Option("--output", "-o", help="Repository output directory for QC artifacts."),
     ],
+    max_events_per_run: Annotated[
+        int,
+        typer.Option(
+            help="Bounded event rows per run; use 0 only for an intentional full streaming scan."
+        ),
+    ] = 256,
 ) -> None:
-    """Compare experimental network A with the exact physical baseline."""
+    """Run read-only Phase 4Q hashing, event QC, and split-feasibility analysis."""
     try:
-        from he3sim.ml.config import load_event_model_evaluation_config
-        from he3sim.ml.evaluation import compare_event_model
-
-        artifacts = compare_event_model(
-            load_event_model_evaluation_config(config_path), output_directory
+        artifacts = qualify_acquisition(
+            input_root,
+            profile_path,
+            output_directory,
+            max_events_per_run=None if max_events_per_run == 0 else max_events_per_run,
         )
-    except ImportError as exc:
-        typer.echo("Phase 5 requires the optional 'ml' dependencies", err=True)
-        raise typer.Exit(code=2) from exc
     except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
-        typer.echo(f"event-model comparison failed: {exc}", err=True)
+        typer.echo(f"Phase 4Q qualification failed: {exc}", err=True)
         raise typer.Exit(code=2) from exc
-    typer.echo(f"comparison_report: {artifacts.report_path}")
-    typer.echo(f"statistical_match: {str(artifacts.statistical_match).lower()}")
-    typer.echo(f"model_status: {artifacts.model_status}")
-    typer.echo("default_generator: exact_poisson_parametric_spectrum")
+    typer.echo(f"output_directory: {artifacts.output_directory}")
+    typer.echo(f"runs: {artifacts.run_count}")
+    typer.echo(f"signal_runs: {artifacts.signal_run_count}")
+    typer.echo(f"processed_events: {artifacts.processed_event_count}")
+    typer.echo(f"scan_complete_runs: {artifacts.scan_complete_run_count}")
+    typer.echo(f"scientific_exit_blocked: {str(artifacts.scientific_exit_blocked).lower()}")
 
 
 def main() -> None:

@@ -9,6 +9,7 @@ from typing import Any
 
 import h5py  # type: ignore[import-untyped]
 import numpy as np
+import numpy.typing as npt
 
 from he3sim import __version__
 from he3sim.acquisition.dead_time import apply_dead_time
@@ -212,8 +213,8 @@ def write_dataset_hdf5(
             adc_max_V = _required(config.adc.input_max_V, "ADC input maximum")
             adc_offset_V = _required(config.adc.offset_V, "ADC offset")
             trigger_state: TriggerState | None = None
-            candidate_chunks: list[np.ndarray] = []
-            rendered_event_chunks: list[np.ndarray] = []
+            candidate_chunks: list[npt.NDArray[np.int64]] = []
+            rendered_event_chunks: list[npt.NDArray[np.void]] = []
             pending_events = np.empty(0, dtype=TRUE_EVENT_DTYPE)
             event_time_cursor_s = 0.0
             written_blocks = 0
