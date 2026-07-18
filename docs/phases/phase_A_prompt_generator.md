@@ -1,7 +1,7 @@
 # Phase A：相关中子事件生成器（纯瞬发）
 
 - 阶段编号：A（相关中子主线第一阶段）
-- 当前状态：`human_review_passed`（2026-07-19 用户确认）
+- 当前状态：`human_review_passed`（2026-07-19 核心生成器及可视化增量均经用户确认）
 - 前置阶段：代码库精简（`00_CLEANUP_PROMPT.md`）已完成；Phase 0–3 物理核心保留可用
 - 执行原则：本阶段通过验收后停止，未经用户确认不得进入下一阶段。
 
@@ -47,6 +47,16 @@
 - `events.py:simulate_true_events()` 增加生成器选择（如 `--source-model {poisson,correlated}` 经 CLI/配置），**默认仍为 poisson**；`correlated` 走 `BranchingChainGenerator`。
 - CLI：`he3sim simulate-events --source-model correlated -c <cfg> -o <out>`。
 
+### 4. 静态可视化验收
+- `analysis/figures.py` 提供 Phase A 的六个纯 Matplotlib 图函数：同率事件 raster、间隔分布、
+  Fano 因子随门宽、平均率随 `k_eff`、真实裂变链树和 `k→0` 退化图。图函数只消费预先计算的
+  数据和指标并返回 `Figure`，不保存文件、不拟合、不另算验收量。
+- `analysis/phase_a_validation.py` 集中计算一阶率、短间隔差异、Fano、`k_eff` 扫描误差和退化 KS；
+  `he3sim validate-correlated` 自动把六张 PNG、离线 HTML 与指标 JSON 写入 `outputs/phaseA_report/`。
+- 图中明确标注适用于 Phase A 的关键量：`α`、`k_eff`、短间隔差异、最大 Fano、最大一阶率差异和
+  退化 KS 距离。单链树来自生成器真实 parent-child trace，不使用示意节点。
+- 本阶段不实现交互仪表盘；如需仪表盘，必须另行授权且只能作为复用图函数的薄壳。
+
 ## 明确不做（留后续）
 - **延迟中子 / 先驱核**（Phase A2）。
 - **近临界 k→1 的布居跟踪 Gillespie**（Phase A2；本阶段以次临界为主，近临界报错或警告即可）。
@@ -61,12 +71,15 @@
 4. **确定性/契约**：同 seed 可复现；`t_s` 严格递增；`TRUE_EVENT_DTYPE` 契约不破；安全上限生效。
 5. **回归**：泊松默认路径与既有测试全部不变；下游波形/ADC/触发/死时间/数据集在 `correlated` 输入下能跑通（冒烟测试）。
 6. 全量 `ruff format --check`、`ruff check`、`mypy src`、`pytest -q` 绿灯。
+7. **可视化报告**：六个图函数返回可单测的 `Figure`；数据级门禁在绘图前计算；CLI 生成六张
+   PNG、离线 HTML 与 JSON；人工确认图例和关键标注无遮挡、结论与 JSON 一致。
 
 建议命令：
 ```bash
 pytest -q tests/unit/test_chains.py tests/unit/test_source_model.py
 he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/phaseA_events.h5
 he3sim inspect outputs/phaseA_events.h5
+he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report
 ```
 
 ## 可直接发送给 Codex 的执行提示词

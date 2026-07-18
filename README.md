@@ -2,7 +2,8 @@
 
 `he3-pulse-sim` is a staged research package for reproducible He-3 thermal-neutron
 detector signal simulation. The active codebase contains the reviewed Phase 0–3
-physical pipeline, the Phase A pure-prompt correlated-arrival engine awaiting review,
+physical pipeline, the reviewed Phase A pure-prompt correlated-arrival engine and static
+validation report,
 and the read-only Phase 4Q acquisition-qualification tools:
 
 - homogeneous-Poisson baseline or source-driven pure-prompt branching-chain arrivals;
@@ -10,6 +11,7 @@ and the read-only Phase 4Q acquisition-qualification tools:
 - peak-normalized double-exponential pulses and continuous waveform synthesis;
 - baseline/noise, clipping, ADC quantization, triggering, and observation-layer dead time;
 - compressed HDF5 datasets, inspection, plotting, and deterministic validation;
+- reusable Phase A Matplotlib figures plus an offline PNG/HTML validation report;
 - read-only acquisition hashing, provenance checks, sampling-axis evidence, and event QC.
 
 The former local Web interface and the Phase 5/6 machine-learning routes are archived under
@@ -52,11 +54,14 @@ he3sim validate-config -c configs/demo_minimal.yaml
 he3sim simulate-events -c configs/demo_minimal.yaml -o outputs/phase01_events.h5
 he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/phaseA_events.h5
 he3sim validate-arrivals -c configs/demo_minimal.yaml -o outputs/phase01_validation
+he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report
 ```
 
 The truth-event HDF5 contains `/events/true` and `/metadata`; correlated outputs additionally contain
 `/events/lineage` with `event_id`, `chain_id`, and `generation`. The in-memory generator enforces
 explicit expected-event, chain-generation, reaction-count, and realized-event limits.
+The Phase A report writes six PNG figures, an offline HTML report, and machine-readable metrics JSON;
+it does not provide an interactive dashboard.
 
 ## Continuous waveforms
 

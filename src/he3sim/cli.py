@@ -15,6 +15,12 @@ from he3sim.analysis.phase3_validation import (
     validate_phase3_physics,
     write_phase3_validation_report,
 )
+from he3sim.analysis.phase_a_validation import (
+    DEFAULT_RATE_SWEEP_EVENTS,
+    DEFAULT_VALIDATION_EVENTS,
+    build_phase_a_validation,
+    write_phase_a_validation_report,
+)
 from he3sim.analysis.reports import write_arrival_validation_report
 from he3sim.analysis.waveform_plot import (
     DEFAULT_MAX_OVERVIEW_POINTS,
@@ -145,6 +151,53 @@ def validate_arrivals_command(
     typer.echo(f"arrival validation report: {report_path}")
     typer.echo(f"result: {'passed' if artifacts.report.passed else 'failed'}")
     if not artifacts.report.passed:
+        raise typer.Exit(code=3)
+
+
+@app.command("validate-correlated")
+def validate_correlated_command(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="YAML configuration with Phase A parameters."),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Directory for Phase A PNG and HTML reports."),
+    ] = Path("outputs/phaseA_report"),
+    validation_events: Annotated[
+        int,
+        typer.Option(help="Expected event count for interval, Fano, and degeneracy views."),
+    ] = DEFAULT_VALIDATION_EVENTS,
+    rate_sweep_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each k_eff point in the mean-rate sweep."),
+    ] = DEFAULT_RATE_SWEEP_EVENTS,
+) -> None:
+    """Generate the Phase A quantitative PNG and offline HTML validation report."""
+    try:
+        config = load_config(config_path)
+        artifacts = build_phase_a_validation(
+            config,
+            validation_events=validation_events,
+            rate_sweep_events=rate_sweep_events,
+        )
+        report_path = write_phase_a_validation_report(output_directory, config, artifacts)
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
+        typer.echo(f"Phase A validation failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Phase A validation report: {report_path}")
+    typer.echo("figures: 6 PNG")
+    typer.echo(
+        f"observed_rate_relative_error: {artifacts.metrics.observed_rate_relative_error:.6g}"
+    )
+    typer.echo(f"maximum_correlated_fano: {artifacts.metrics.maximum_correlated_fano:.6g}")
+    typer.echo(
+        "maximum_rate_sweep_relative_error: "
+        f"{artifacts.metrics.maximum_rate_sweep_relative_error:.6g}"
+    )
+    typer.echo(f"degeneracy_ks_distance: {artifacts.metrics.degeneracy_ks_distance:.6g}")
+    typer.echo(f"result: {'passed' if artifacts.metrics.passed else 'failed'}")
+    if not artifacts.metrics.passed:
         raise typer.Exit(code=3)
 
 

@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 当前任务：Phase A 已完成；等待下一阶段单独授权
+- 当前任务：Phase A 静态可视化验收增量已通过人工审核；等待下一阶段单独授权
 - 当前状态：`human_review_passed`
 - 活动物理基线：Phase 0–3 + Phase A；泊松仍为默认非相关基线
 - Phase 4：`deferred`
@@ -33,9 +33,24 @@
 | 5 网络 A | archived | 2026-07-18 | 历史实现移入 `archive/` |
 | 6/6S 网络 C | archived | 2026-07-18 | 正式路线与工程预演均移入 `archive/` |
 | M0 代码库精简 | human_review_passed | 2026-07-18 | 用户已明确确认人工验收通过 |
-| A 纯瞬发相关事件 | human_review_passed | 2026-07-18 | 用户于 2026-07-19 明确确认人工验收通过 |
+| A 纯瞬发相关事件 | human_review_passed | 2026-07-19 | 核心生成器与静态可视化增量均经用户确认 |
 
 ## 最近一次执行结果
+
+### 2026-07-19 Phase A 静态可视化验收增量
+
+- 图库：新增 `analysis/figures.py` 六个纯 Matplotlib 图函数，分别渲染同率事件 raster、间隔分布、
+  Fano-门宽、平均率-`k_eff`、真实链树和 `k→0` 退化；图层只消费验证层预计算的数据和指标。
+- 计算与追溯：验证层以固定 seed 计算一阶率差异、短间隔差异、Fano、率扫描误差和退化 KS；
+  生成器仅在显式开启时记录有限数量真实反应节点及 parent-child trace，生产默认路径不增加开销。
+- CLI 与产物：`he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report`
+  生成六张 PNG、离线 `phase_a_validation.html` 与 `phase_a_validation.json`，未实现交互仪表盘。
+- 正式演示结果：观察率相对差异 `0.275%`，最大相关 Fano `1.13429`，率扫描最大相对差异
+  `1.70%`，近零倍增 KS `0.0055651`，全部通过自动门禁；六张图已完成本地视觉检查。
+- 自动验收：`ruff format --check .`、`ruff check .`、`mypy src` 全部通过；`pytest -q`
+  160 项通过。
+- 人工验收：用户于 2026-07-19 明确确认 Phase A 可视化增量审核通过。
+- 当前结论：Phase A 标记为 `human_review_passed`；仍不得自动进入 Phase B。
 
 ### 2026-07-18 Phase A 纯瞬发相关中子事件生成器
 

@@ -29,7 +29,7 @@
 | 4Q | 数据资格与采样轴确认 | 核心实现通过 | 等待人工审核；科学出口仍 blocked |
 | 5 | 条件标记事件网络 A | 已归档 | 不再审核 |
 | 6/6S | 残差网络路线 | 已归档 | 不再审核 |
-| A | 纯瞬发相关中子事件、裂变链 lineage 与全链复用 | 已通过 | 已通过（2026-07-19） |
+| A | 纯瞬发相关事件、lineage 与静态验证图 | 已通过 | 已通过（2026-07-19） |
 
 ## 3. 环境与通用约定
 
@@ -737,10 +737,19 @@ he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o
 he3sim inspect outputs/manual_review/phaseA/correlated.h5
 ```
 
+生成本阶段静态验收报告：
+
+```powershell
+he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report
+```
+
+浏览器打开 `outputs/phaseA_report/phase_a_validation.html`，并可逐张查看同目录六个 PNG。报告必须
+可以离线打开，不依赖 JavaScript；`phase_a_validation.json` 保存与图面标注相同的门禁指标。
+
 执行专项与全量验收：
 
 ```powershell
-python -m pytest -q tests/unit/test_source_model.py tests/unit/test_chains.py
+python -m pytest -q tests/unit/test_source_model.py tests/unit/test_chains.py tests/unit/test_phase_a_visualization.py
 python -m pytest -q tests/integration/test_phase1.py tests/integration/test_phase3.py
 python -m ruff format --check .
 python -m ruff check .
@@ -756,6 +765,9 @@ python -m pytest -q
 - 相关 HDF5 额外包含 `events/lineage`，字段为 `event_id/chain_id/generation`；
 - `metadata/source_model` 为 `correlated`，`source_model_derived_json` 保存派生物理量；
 - `pileup_group_id` 仍由波形流式层按脉冲重叠关系计算，不解释为裂变链编号。
+- 静态报告包含同率 raster、log-y 间隔分布、Fano-门宽、平均率-`k_eff`、真实链树和退化极限；
+- 图面关键量来自 JSON/验证层预计算结果，图函数只渲染并返回 `matplotlib.figure.Figure`；
+- 报告没有交互仪表盘，也没有恢复已归档 Web 路线。
 
 ### 10.4 人工审核清单
 
@@ -764,9 +776,12 @@ python -m pytest -q
 - [x] 同 seed 输出可复现，时刻严格递增且位于观察窗内；
 - [x] `TRUE_EVENT_DTYPE` 未改变，lineage 与 `event_id` 一一对齐；
 - [x] 派生探测率为 `S*epsilon/(1-k_eff)`，配置不一致时明确拒绝；
-- [x] 全量 155 项测试、Ruff 和 mypy 均通过；
+- [x] 全量 160 项测试、Ruff 和 mypy 均通过；
 - [x] 所有演示参数仍标记 `synthetic_demo`；
 - [x] 未实现延迟中子、近临界 Gillespie、Phase B 噪声分析、DT5800 或硬件控制。
+- [x] 六张 PNG 均可读，图例、坐标、`α` 与差异指标标注清晰且无遮挡；
+- [x] 离线 HTML 的技术摘要、图面结论和 `phase_a_validation.json` 数值一致；
+- [x] 未实现交互仪表盘，报告仅为静态 PNG/HTML 薄层。
 
 ### 10.5 审核记录
 
@@ -778,6 +793,18 @@ python -m pytest -q
 | 物理窗口约定 | 源开启窗口；无预热历史 |
 | 结论 | 通过 |
 | 问题与备注 | Phase B 未开始；必须等待单独授权 |
+
+### 10.6 静态可视化增量审核记录
+
+| 项目 | 填写内容 |
+|---|---|
+| 自动验收时间（含时区） | 2026-07-19（Asia/Shanghai） |
+| 自动验收 | 160 项测试通过；Ruff/mypy 通过；正式 CLI 报告门禁通过 |
+| 正式产物 | `outputs/phaseA_report/`：6 PNG + HTML + JSON |
+| 审核人 | 用户（本线程确认） |
+| 人工审核时间（含时区） | 2026-07-19（Asia/Shanghai） |
+| 结论 | 通过 |
+| 问题与备注 | 原核心生成器审核记录保留；Phase B 仍须单独授权 |
 
 ## 11. 如何提交人工审核结论
 
@@ -833,3 +860,5 @@ Phase X 人工审核不通过。问题如下：……。只修复这些问题并
 | 2026-07-18 | 3.0 | 归档 Web/ML 路线，保留 Phase 0–3 与 Phase 4Q 审核入口，并切换至相关中子噪声路线图 |
 | 2026-07-18 | 3.1 | 新增 Phase A 纯瞬发相关事件、lineage 旁表、源开启窗口和人工审核步骤 |
 | 2026-07-19 | 3.2 | 记录 Phase A 人工审核通过；保持 Phase B 未授权 |
+| 2026-07-19 | 3.3 | 新增 Phase A 六图静态 PNG/HTML 报告及数据级测试；重新等待人工复核 |
+| 2026-07-19 | 3.4 | 记录 Phase A 可视化增量人工审核通过；保持 Phase B 未授权 |

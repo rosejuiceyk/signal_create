@@ -34,6 +34,7 @@ he3sim --help
 he3sim validate-config -c configs/demo_minimal.yaml
 he3sim simulate-events -c configs/demo_minimal.yaml -o outputs/events.h5
 he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/correlated_events.h5
+he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report
 he3sim simulate-waveform -c configs/demo_minimal.yaml -o outputs/waveform.h5
 he3sim plot-waveform outputs/waveform.h5 -o outputs/waveform.png
 he3sim generate-dataset -c configs/demo_minimal.yaml -o outputs/dataset
@@ -91,6 +92,21 @@ $$
 
 本阶段采用“源开启窗口”：只从观察窗起点开始注入外源，不模拟窗前历史，因此开头存在约
 `1/alpha` 的启动暂态。当前不包含延迟中子、空间/能量输运或近临界 Gillespie 算法。
+
+Phase A 静态验证命令为：
+
+```powershell
+he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report
+```
+
+命令以固定 seed 计算所有统计量，然后调用 `analysis/figures.py` 的纯绘图函数。输出包括
+`event_raster.png`、`interval_distribution.png`、`fano_vs_gate.png`、`mean_rate_vs_k.png`、
+`chain_tree.png`、`degeneracy_limit.png`、离线 `phase_a_validation.html` 和
+`phase_a_validation.json`。HTML 只引用同目录静态 PNG，不含 JavaScript 或交互仪表盘。
+
+报告门禁为：配置点观察率相对差异不超过 3%，`k_eff` 扫描最大相对差异不超过 5%，最大相关
+Fano 大于 1.05，近零倍增间隔 KS 距离不超过样本量相关容限。图上标注 `α`、`k_eff`、短间隔
+差异、最大 Fano、最大率差异和 KS 距离；这些量均在验证层计算，绘图层不重复推导。
 
 ### 3.3 参数化 He-3 沉积能谱
 
@@ -188,6 +204,7 @@ $$
 he3sim validate-config -c configs/demo_minimal.yaml
 he3sim simulate-events -c configs/demo_minimal.yaml -o outputs/events.h5
 he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/correlated_events.h5
+he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report
 he3sim validate-arrivals -c configs/demo_minimal.yaml -o outputs/arrival_validation
 he3sim simulate-waveform -c configs/demo_minimal.yaml -o outputs/waveform.h5
 he3sim plot-waveform outputs/waveform.h5 -o outputs/waveform.png

@@ -58,6 +58,31 @@ def test_correlated_arrivals_are_reproducible_ordered_and_lineage_aligned() -> N
     assert np.all(left.generations >= 0)
 
 
+def test_optional_trace_records_real_reactions_and_parent_child_links() -> None:
+    model = prompt_model(0.2, 8_000.0)
+    batch = BranchingChainGenerator(model, trace_chain_limit=1_000).sample_with_lineage(
+        ConstantRateProfile(model.source_rate_cps),
+        0.0,
+        0.1,
+        np.random.default_rng(123),
+    )
+
+    assert batch.trace_nodes
+    known_ids = {node.neutron_id for node in batch.trace_nodes}
+    assert {node.reaction for node in batch.trace_nodes} <= {
+        "capture",
+        "detection",
+        "fission",
+    }
+    for node in batch.trace_nodes:
+        assert node.reaction_time_s >= node.birth_time_s
+        if node.parent_id >= 0:
+            assert node.parent_id in known_ids
+            parent = next(item for item in batch.trace_nodes if item.neutron_id == node.parent_id)
+            assert node.chain_id == parent.chain_id
+            assert node.generation == parent.generation + 1
+
+
 def test_long_window_mean_rate_matches_analytic_first_moment() -> None:
     model = prompt_model(0.2, 8_000.0)
 
