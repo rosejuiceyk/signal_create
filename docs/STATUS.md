@@ -2,13 +2,13 @@
 
 ## 当前阶段
 
-- 当前任务：代码库精简（M0）
+- 当前任务：Phase A 纯瞬发相关中子事件生成器
 - 当前状态：`awaiting_human_review`
-- 活动物理基线：Phase 0–3；Phase 4Q 只读数据资格工具保留
+- 活动物理基线：Phase 0–3 + Phase A；泊松仍为默认非相关基线
 - Phase 4：`deferred`
 - Phase 3.5、Phase 5、Phase 6/6S：`archived`
 - 后续主线：相关中子噪声信号级数字孪生，见 `docs/ROADMAP_v2.md`
-- 本次边界：只归档和修补引用，不实现 Phase A 或任何新功能
+- 本次边界：只实现 Phase A；不进入 Phase B、延迟中子、HIL 或连续信号噪声分析
 
 ## 已确认的范围
 
@@ -32,9 +32,27 @@
 | 4Q 数据资格 | awaiting_human_review | 2026-07-15 | 保留只读资格审查；科学出口仍 blocked |
 | 5 网络 A | archived | 2026-07-18 | 历史实现移入 `archive/` |
 | 6/6S 网络 C | archived | 2026-07-18 | 正式路线与工程预演均移入 `archive/` |
-| M0 代码库精简 | awaiting_human_review | 2026-07-18 | 自动验收完成后等待用户审核 |
+| M0 代码库精简 | human_review_passed | 2026-07-18 | 用户已明确确认人工验收通过 |
+| A 纯瞬发相关事件 | awaiting_human_review | 2026-07-18 | 自动验收通过；等待用户审核 |
 
 ## 最近一次执行结果
+
+### 2026-07-18 Phase A 纯瞬发相关中子事件生成器
+
+- 门禁：用户明确确认 M0 人工验收通过，并接受“源开启窗口”约定和独立 lineage 旁表。
+- 配置：新增可选 `source_model`；默认 `poisson`，`correlated` 支持 `k_eff/reactivity` 二选一、
+  `alpha`、探测效率、`nu_bar/nu_pmf` 和外源率。所有演示物理量均为 `synthetic_demo`。
+- 映射：集中计算并校验 `lambda_f/lambda_c/lambda_d/lambda_t`、反应时间、代时间、Diven 因子和
+  `S*epsilon/(1-k_eff)` 一阶探测率；派生量写入 HDF5 元数据，不伪造新的证据状态。
+- 生成：新增源驱动纯瞬发逐链蒙特卡洛；外源复用现有泊松采样器，链状态可跨连续数据块保留；
+  泊松仍是默认路径，相关模式可由配置或 `simulate-events --source-model correlated` 选择。
+- 数据契约：`TRUE_EVENT_DTYPE` 未修改；`pileup_group_id` 继续只表示堆积分组；相关文件新增
+  `events/lineage(event_id, chain_id, generation)` 旁表。
+- 安全：期望事件预检、单链最大代数、总反应数、单块和总事件数均有显式上限，超限报错而不截断。
+- 验收：覆盖近零倍增泊松退化、一阶解析率、相关强度随 `k_eff` 增加、确定性、连续块边界、护栏、
+  HDF5 lineage，以及波形→ADC→触发→死时间→数据集全链冒烟。
+- 自动验收：`ruff format --check .`、`ruff check .`、`mypy src` 全部通过；`pytest -q` 155 项通过。
+- 当前结论：Phase A 标记为 `awaiting_human_review`；不得自动进入 Phase B。
 
 ### 2026-07-18 代码库精简
 

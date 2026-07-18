@@ -16,7 +16,13 @@ from he3sim.acquisition.dead_time import apply_dead_time
 from he3sim.acquisition.event_matching import match_triggers_to_truth
 from he3sim.acquisition.trigger import ThresholdTrigger, TriggerState
 from he3sim.analysis.pulse_features import extract_pulse_features
-from he3sim.config import He3SimConfig, ParameterValue, canonical_config_json, config_hash
+from he3sim.config import (
+    He3SimConfig,
+    ParameterValue,
+    SourceModelKind,
+    canonical_config_json,
+    config_hash,
+)
 from he3sim.physics.event_stream import StreamingTrueEventGenerator
 from he3sim.random import RandomContext
 from he3sim.synthesis.baseline import constant_baseline
@@ -25,6 +31,7 @@ from he3sim.synthesis.digitizer import clip_analog, quantize_adc
 from he3sim.synthesis.noise import AR1DriftGenerator, gaussian_white_noise
 from he3sim.synthesis.renderers import RecursiveFixedTauRenderer, RecursiveFixedTauState
 from he3sim.types import (
+    EVENT_LINEAGE_DTYPE,
     OBSERVED_EVENT_DTYPE,
     TRIGGER_EVENT_LINK_DTYPE,
     TRUE_EVENT_DTYPE,
@@ -92,6 +99,7 @@ def _create_metadata(
     metadata.attrs["parameter_status"] = simulation.parameter_status.value
     metadata.attrs["units_json"] = json.dumps(DATASET_UNITS, sort_keys=True)
     metadata.attrs["arrival_algorithm"] = simulation.true_events.arrival_algorithm.value
+    metadata.attrs["source_model"] = simulation.true_events.source_model.value
     metadata.attrs["renderer"] = simulation.waveform.renderer.value
     metadata.attrs["true_rate_cps"] = simulation.true_events.true_rate_cps
     metadata.attrs["event_horizon_s"] = simulation.event_horizon_s
@@ -103,6 +111,11 @@ def _create_metadata(
     metadata.attrs["dead_time_duration_s"] = _required(
         config.dead_time.duration_s, "dead-time duration"
     )
+    if simulation.true_events.derived_source_metadata is not None:
+        metadata.attrs["source_model_derived_json"] = json.dumps(
+            simulation.true_events.derived_source_metadata,
+            sort_keys=True,
+        )
 
 
 def write_dataset_hdf5(
@@ -142,6 +155,16 @@ def write_dataset_hdf5(
                 chunks=True,
                 **compression,
             )
+            lineage_dataset: h5py.Dataset | None = None
+            if simulation.true_events.source_model is SourceModelKind.CORRELATED:
+                lineage_dataset = events_group.create_dataset(
+                    "lineage",
+                    shape=(0,),
+                    dtype=EVENT_LINEAGE_DTYPE,
+                    maxshape=(None,),
+                    chunks=True,
+                    **compression,
+                )
 
             blocks = handle.create_group("blocks")
             analog_dataset = blocks.create_dataset(
@@ -238,6 +261,12 @@ def write_dataset_hdf5(
                     old_size = true_dataset.shape[0]
                     true_dataset.resize((old_size + generated.size,))
                     true_dataset[old_size:] = generated
+                    if lineage_dataset is not None:
+                        lineage = event_generator.last_lineage
+                        if lineage.size != generated.size:
+                            raise RuntimeError("lineage and truth chunks are not aligned")
+                        lineage_dataset.resize((old_size + lineage.size,))
+                        lineage_dataset[old_size:] = lineage
                     if generated.size:
                         rendered_event_chunks.append(generated)
                 available = (
@@ -310,6 +339,12 @@ def write_dataset_hdf5(
                 old_size = true_dataset.shape[0]
                 true_dataset.resize((old_size + generated.size,))
                 true_dataset[old_size:] = generated
+                if lineage_dataset is not None:
+                    lineage = event_generator.last_lineage
+                    if lineage.size != generated.size:
+                        raise RuntimeError("lineage and truth chunks are not aligned")
+                    lineage_dataset.resize((old_size + lineage.size,))
+                    lineage_dataset[old_size:] = lineage
                 event_time_cursor_s = interval_stop_s
                 remaining_s = simulation.event_horizon_s - event_time_cursor_s
 

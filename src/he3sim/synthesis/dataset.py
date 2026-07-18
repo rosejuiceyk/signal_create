@@ -8,13 +8,21 @@ from dataclasses import dataclass
 import numpy as np
 from pydantic import BaseModel
 
-from he3sim.config import He3SimConfig, ParameterStatus, ParameterValue, WaveformRenderer
+from he3sim.config import (
+    He3SimConfig,
+    ParameterStatus,
+    ParameterValue,
+    SourceModelKind,
+    WaveformRenderer,
+)
 from he3sim.physics.arrivals import ArrivalAlgorithm
 from he3sim.physics.events import (
     DEFAULT_MAX_EXPECTED_EVENTS,
     TrueEventSimulation,
     resolve_duration_s,
+    resolve_true_rate_cps,
 )
+from he3sim.physics.source_model import PromptSourceModel
 from he3sim.synthesis.streaming import DEFAULT_MAX_WAVEFORM_SAMPLES, WaveformSimulation
 from he3sim.types import TRUE_EVENT_DTYPE
 
@@ -67,6 +75,8 @@ def dataset_parameter_status(config: He3SimConfig) -> ParameterStatus:
         config.dataset,
     ):
         statuses.extend(_statuses(section))
+    if config.source_model.kind is SourceModelKind.CORRELATED:
+        statuses.extend(_statuses(config.source_model))
     if ParameterStatus.SYNTHETIC_DEMO in statuses:
         return ParameterStatus.SYNTHETIC_DEMO
     if ParameterStatus.PROVISIONAL in statuses:
@@ -95,9 +105,16 @@ def prepare_dataset_simulation(
     if algorithm is not ArrivalAlgorithm.POISSON_UNIFORM:
         raise ValueError("Phase 3 streaming datasets currently require poisson_uniform")
     event_horizon_s = resolve_duration_s(config)
-    true_rate_cps = _required(config.simulation.true_rate_cps, "true_rate_cps")
+    true_rate_cps = resolve_true_rate_cps(config)
     if true_rate_cps * event_horizon_s > max_expected_events:
         raise ValueError("expected streaming event count exceeds the explicit limit")
+    if config.source_model.kind is SourceModelKind.CORRELATED:
+        prompt_model = PromptSourceModel.from_config(config.source_model)
+        expected_reactions = (
+            prompt_model.source_rate_cps * event_horizon_s / (1.0 - prompt_model.k_eff)
+        )
+        if expected_reactions > config.source_model.max_total_reactions:
+            raise ValueError("expected streaming reactions exceed max_total_reactions")
     requested_continuous_s = _required(
         config.dataset.continuous_duration_s,
         "continuous_duration_s",
@@ -120,6 +137,12 @@ def prepare_dataset_simulation(
         seed=config.metadata.seed.value,
         parameter_status=dataset_parameter_status(config),
         arrival_algorithm=algorithm,
+        source_model=config.source_model.kind,
+        derived_source_metadata=(
+            PromptSourceModel.from_config(config.source_model).to_metadata()
+            if config.source_model.kind is SourceModelKind.CORRELATED
+            else None
+        ),
     )
     requested_renderer = renderer_override or config.waveform.renderer
     if requested_renderer is WaveformRenderer.DIRECT_SPARSE:

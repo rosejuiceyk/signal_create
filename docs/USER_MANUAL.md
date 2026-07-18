@@ -29,6 +29,7 @@
 | 4Q | 数据资格与采样轴确认 | 核心实现通过 | 等待人工审核；科学出口仍 blocked |
 | 5 | 条件标记事件网络 A | 已归档 | 不再审核 |
 | 6/6S | 残差网络路线 | 已归档 | 不再审核 |
+| A | 纯瞬发相关中子事件、裂变链 lineage 与全链复用 | 已通过 | 等待人工审核 |
 
 ## 3. 环境与通用约定
 
@@ -711,7 +712,74 @@ outputs/phase04q/
 
 
 
-## 10. 如何提交人工审核结论
+## 10. Phase A 人工审核：纯瞬发相关中子事件
+
+### 10.1 审核目标
+
+确认泊松仍是默认基线；相关模式能产生可复现、严格有序的探测时刻；裂变链标签通过独立旁表保存，
+不占用 `pileup_group_id`；相关事件能够继续通过现有波形、ADC、触发、死时间和数据集流水线。
+
+本阶段采用用户确认的“源开启窗口”：只在观察窗内生成外源中子，不预置稳态中子布居。因此窗口开头
+存在约 `1/alpha` 的启动暂态；一阶解析率验收使用远长于该时间尺度的观察窗。
+
+### 10.2 操作步骤
+
+生成默认泊松事件：
+
+```powershell
+he3sim simulate-events -c configs/demo_minimal.yaml -o outputs/manual_review/phaseA/poisson.h5
+```
+
+使用同一演示配置内的相关参数预设生成纯瞬发相关事件：
+
+```powershell
+he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/manual_review/phaseA/correlated.h5
+he3sim inspect outputs/manual_review/phaseA/correlated.h5
+```
+
+执行专项与全量验收：
+
+```powershell
+python -m pytest -q tests/unit/test_source_model.py tests/unit/test_chains.py
+python -m pytest -q tests/integration/test_phase1.py tests/integration/test_phase3.py
+python -m ruff format --check .
+python -m ruff check .
+python -m mypy src
+python -m pytest -q
+```
+
+### 10.3 预期结果和数据契约
+
+- 默认命令输出 `source_model: poisson`；显式覆盖输出 `source_model: correlated`；
+- 两次使用相同 seed 的相关模拟产生完全相同的真值与 lineage；
+- `events/true` 的 dtype 与 Phase 1–3 完全相同；
+- 相关 HDF5 额外包含 `events/lineage`，字段为 `event_id/chain_id/generation`；
+- `metadata/source_model` 为 `correlated`，`source_model_derived_json` 保存派生物理量；
+- `pileup_group_id` 仍由波形流式层按脉冲重叠关系计算，不解释为裂变链编号。
+
+### 10.4 人工审核清单
+
+- [ ] 泊松默认路径和旧命令保持可用；
+- [ ] 相关 CLI 成功生成带 lineage 的 HDF5；
+- [ ] 同 seed 输出可复现，时刻严格递增且位于观察窗内；
+- [ ] `TRUE_EVENT_DTYPE` 未改变，lineage 与 `event_id` 一一对齐；
+- [ ] 派生探测率为 `S*epsilon/(1-k_eff)`，配置不一致时明确拒绝；
+- [ ] 全量 155 项测试、Ruff 和 mypy 均通过；
+- [ ] 所有演示参数仍标记 `synthetic_demo`；
+- [ ] 未实现延迟中子、近临界 Gillespie、Phase B 噪声分析、DT5800 或硬件控制。
+
+### 10.5 审核记录
+
+| 项目 | 填写内容 |
+|---|---|
+| 审核人 | 待用户填写 |
+| 审核时间（含时区） | 待填写 |
+| 自动验收 | 155 项测试通过；Ruff/mypy 通过 |
+| 物理窗口约定 | 源开启窗口；无预热历史 |
+| 结论 | 等待人工审核 |
+| 问题与备注 | Phase B 未开始 |
+
+## 11. 如何提交人工审核结论
 
 完成某一 Phase 的检查后，向 Codex 明确发送以下任一结论：
 
@@ -728,7 +796,7 @@ Phase X 人工审核不通过。问题如下：……。只修复这些问题并
 收到“人工审核通过”后，Codex 应更新本文档对应审核记录和 `docs/STATUS.md`。只有用户随后明确要求
 执行下一 Phase，才允许开始下一阶段。
 
-## 11. 后续 Phase 的手册更新要求
+## 12. 后续 Phase 的手册更新要求
 
 每个 Phase 自动验收完成后，必须在停止前更新本文档，至少补充：
 
@@ -744,7 +812,7 @@ Phase X 人工审核不通过。问题如下：……。只修复这些问题并
 若新阶段修改了旧功能，也必须同步更新旧章节。没有更新用户手册的 Phase 不得标记为等待人工审核，
 更不得进入下一阶段。
 
-## 12. 文档变更记录
+## 13. 文档变更记录
 
 | 日期 | 版本 | 内容 |
 |---|---|---|
@@ -763,3 +831,4 @@ Phase X 人工审核不通过。问题如下：……。只修复这些问题并
 | 2026-07-14 | 2.2 | 退役网络 A；新增 Phase 4Q 只读数据资格、QC、采样轴和人工审核说明 |
 | 2026-07-15 | 2.3 | 新增Phase 6S人工干扰、事件保护TCN、CUDA预演、产物和人工审核说明 |
 | 2026-07-18 | 3.0 | 归档 Web/ML 路线，保留 Phase 0–3 与 Phase 4Q 审核入口，并切换至相关中子噪声路线图 |
+| 2026-07-18 | 3.1 | 新增 Phase A 纯瞬发相关事件、lineage 旁表、源开启窗口和人工审核步骤 |

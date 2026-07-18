@@ -8,7 +8,13 @@ from dataclasses import dataclass
 import numpy as np
 from pydantic import BaseModel
 
-from he3sim.config import He3SimConfig, ParameterStatus, ParameterValue, WaveformRenderer
+from he3sim.config import (
+    He3SimConfig,
+    ParameterStatus,
+    ParameterValue,
+    SourceModelKind,
+    WaveformRenderer,
+)
 from he3sim.physics.arrivals import ArrivalAlgorithm
 from he3sim.physics.events import (
     DEFAULT_MAX_EXPECTED_EVENTS,
@@ -72,6 +78,8 @@ def waveform_parameter_status(config: He3SimConfig) -> ParameterStatus:
         *_section_statuses(config.pulse_shape),
         *_section_statuses(config.waveform),
     ]
+    if config.source_model.kind is SourceModelKind.CORRELATED:
+        statuses.extend(_section_statuses(config.source_model))
     if config.baseline.enabled:
         statuses.extend(_section_statuses(config.baseline))
     if config.noise.enabled:
@@ -120,6 +128,9 @@ def prepare_waveform_simulation(
         seed=true_events.seed,
         parameter_status=true_events.parameter_status,
         arrival_algorithm=true_events.arrival_algorithm,
+        source_model=true_events.source_model,
+        lineage=true_events.lineage,
+        derived_source_metadata=true_events.derived_source_metadata,
     )
     requested = renderer_override or config.waveform.renderer
     renderer = resolve_renderer_backend(events, requested)

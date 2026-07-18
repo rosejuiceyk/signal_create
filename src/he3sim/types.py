@@ -206,6 +206,16 @@ TRUE_EVENT_DTYPE = np.dtype(
 """Structured dtype for future bulk truth-event storage."""
 
 
+EVENT_LINEAGE_DTYPE = np.dtype(
+    [
+        ("event_id", "<i8"),
+        ("chain_id", "<i8"),
+        ("generation", "<i4"),
+    ]
+)
+"""Optional correlated-chain lineage rows aligned to truth-event IDs."""
+
+
 OBSERVED_EVENT_DTYPE = np.dtype(
     [
         ("trigger_id", "<i8"),

@@ -6,8 +6,9 @@
 本文档是软件功能、操作方法、物理原型、后端模块和数据格式的独立用户手册。
 阶段人工审核步骤与审核记录另见 `docs/USER_MANUAL.md`。
 
-当前软件用于：给定死时间之前的真实计数率、采样率、观察时间和随机种子，生成可复现的
-He-3 热中子探测器前置放大器连续合成波形，并输出 HDF5、CSV、PNG、YAML 和 JSON。
+当前软件用于：给定死时间之前的真实计数率、采样率、观察时间和随机种子，以非相关泊松过程或
+纯瞬发分支过程生成可复现的 He-3 热中子探测器前置放大器连续合成波形，并输出 HDF5、CSV、PNG、
+YAML 和 JSON。
 
 当前参数尚未由真实探测器、前放、ADC 或示波器标定。输出适合算法开发、软件验证和合成数据研究，
 不能直接作为某一台真实设备的定量预测。
@@ -32,6 +33,7 @@ he3sim --help
 ```powershell
 he3sim validate-config -c configs/demo_minimal.yaml
 he3sim simulate-events -c configs/demo_minimal.yaml -o outputs/events.h5
+he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/correlated_events.h5
 he3sim simulate-waveform -c configs/demo_minimal.yaml -o outputs/waveform.h5
 he3sim plot-waveform outputs/waveform.h5 -o outputs/waveform.png
 he3sim generate-dataset -c configs/demo_minimal.yaml -o outputs/dataset
@@ -61,7 +63,36 @@ $$
 软件保留两种精确算法：固定窗口主路径使用“泊松计数加排序均匀时刻”，交叉验证和流式扩展使用
 “累积指数间隔”。随机数统一使用 `numpy.random.Generator` 和 `SeedSequence` 子流。
 
-### 3.2 参数化 He-3 沉积能谱
+### 3.2 纯瞬发相关中子分支过程
+
+相关模式使用一速点模型。外源到达仍由精确泊松采样器生成；每个中子经过参数为 `lambda_t` 的指数
+寿命后发生裂变、俘获或探测：
+
+$$
+\lambda_t=\frac{\alpha}{1-k},\quad
+\lambda_f=\frac{k\lambda_t}{\bar\nu},\quad
+\lambda_d=\epsilon\lambda_t,\quad
+\lambda_c=\lambda_t-\lambda_f-\lambda_d
+$$
+
+裂变时按 `nu_pmf` 抽取瞬发子代数并继续同一条链。长时间一阶探测率为：
+
+$$
+R_d=\frac{S\epsilon}{1-k}
+$$
+
+配置要求 `0<k<1`、`alpha>0`、`0<epsilon<1`、`nu_pmf` 非负且和为 1、PMF 均值与
+`nu_bar` 一致，并要求 `lambda_c>=0`。`k_eff` 与反应性 `rho=(k-1)/k` 二选一。
+
+`configs/demo_minimal.yaml` 默认仍为 `source_model.kind: poisson`，但包含完整、全部标记为
+`synthetic_demo` 的相关参数预设，因此可用 `--source-model correlated` 审核事件 CLI。若要让波形和
+数据集命令按相关模式运行，应在派生配置中把 `source_model.kind` 改为 `correlated`，并保持
+`simulation.true_rate_cps = S*epsilon/(1-k)`。
+
+本阶段采用“源开启窗口”：只从观察窗起点开始注入外源，不模拟窗前历史，因此开头存在约
+`1/alpha` 的启动暂态。当前不包含延迟中子、空间/能量输运或近临界 Gillespie 算法。
+
+### 3.3 参数化 He-3 沉积能谱
 
 物理原型来自：
 
@@ -72,7 +103,7 @@ $$
 能谱由 764 keV 全能峰、质子壁效应、氚壁效应和可选双壁效应组成。全能峰使用正值截断高斯，
 壁效应使用有界 Beta 分布。混合权重非负且和为 1。这些是参数化演示分布，不是真实管体标定结果。
 
-### 3.3 能量到峰值幅值
+### 3.4 能量到峰值幅值
 
 $$
 A_{\mathrm{peak}}=G_EE_{\mathrm{dep}}+\epsilon_A
@@ -81,7 +112,7 @@ $$
 `A_peak` 保存正的目标峰值幅度，脉冲正负由独立的 `polarity` 保存。当前增益、偏置和展宽参数均为
 演示值。
 
-### 3.4 峰值归一化双指数脉冲
+### 3.5 峰值归一化双指数脉冲
 
 令 `s=t-t_i`，当 `s>=0`：
 
@@ -103,7 +134,7 @@ $$
 离散实现按事件相对采样网格的分数相位校正峰值，使孤立脉冲在离散波形上的峰值保持为
 配置的 `A_peak`。
 
-### 3.5 连续波形和堆积
+### 3.6 连续波形和堆积
 
 $$
 v(t)=b(t)+n(t)+\sum_i v_i(t)
@@ -113,7 +144,7 @@ $$
 `recursive_fixed_tau` 使用两个指数递推状态实现高效固定时间常数波形，并保持跨块尾部连续；
 `auto` 自动选择后端。
 
-### 3.6 基线、噪声、裁剪和 ADC
+### 3.7 基线、噪声、裁剪和 ADC
 
 当前支持常量基线、高斯白噪声、可选 AR(1) 低频漂移、模拟电压裁剪、ADC 输入范围与位数量化，
 以及每点饱和标记。处理顺序为：
@@ -124,7 +155,7 @@ $$
 
 简单裁剪不是空间电荷、气体增益变化或真实前放饱和恢复模型。真实恢复行为必须等待示波器数据标定。
 
-### 3.7 触发与死时间
+### 3.8 触发与死时间
 
 Phase 3 数据集支持 `none`、`nonparalyzable` 和 `paralyzable`：
 
@@ -143,7 +174,7 @@ $$
 | 模块 | 职责 |
 |---|---|
 | `he3sim/config.py`、`random.py` | 配置、单位、参数状态、seed 和独立随机子流 |
-| `physics/` | 泊松到达、He-3 能谱、幅值、脉冲参数和真值事件 |
+| `physics/` | 泊松到达、纯瞬发分支链、源模型映射、He-3 能谱、幅值、脉冲参数和真值事件 |
 | `synthesis/` | 连续波形、噪声、基线、裁剪、ADC 和多尺度数据集 |
 | `acquisition/` | 触发、死时间和真值事件关联 |
 | `analysis/` | 统计验证、脉冲特征、报告和波形绘图 |
@@ -156,6 +187,7 @@ $$
 ```powershell
 he3sim validate-config -c configs/demo_minimal.yaml
 he3sim simulate-events -c configs/demo_minimal.yaml -o outputs/events.h5
+he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/correlated_events.h5
 he3sim validate-arrivals -c configs/demo_minimal.yaml -o outputs/arrival_validation
 he3sim simulate-waveform -c configs/demo_minimal.yaml -o outputs/waveform.h5
 he3sim plot-waveform outputs/waveform.h5 -o outputs/waveform.png
@@ -193,10 +225,24 @@ QC 状态为 `pass`、`fail`、`not_evaluable` 或 `unknown`。当前 profile �
 
 ## 8. 当前限制
 
-- 仅模拟恒定计数率、非相关热中子的齐次泊松过程；
+- 到达层支持恒定率非相关泊松和源驱动纯瞬发一速点模型；不含延迟中子、全输运或近临界算法；
 - 能谱、增益、时间常数、噪声、量程和 ADC 尚未真实标定；
 - 没有空间电荷、气体增益随计数率变化、前放非线性恢复或真实饱和恢复；
 - 不包含示波器导入、真实标定、MCNP 自动运行或硬件控制；
 - Web 与生成式 ML 路线已归档，活动环境不安装 Streamlit 或 PyTorch。
+
+## 9. 相关事件 HDF5 数据格式
+
+`TRUE_EVENT_DTYPE` 保持不变。相关模式在 `events/true` 之外增加 `events/lineage`：
+
+| 字段 | 类型 | 含义 |
+|---|---|---|
+| `event_id` | int64 | 与 `events/true/event_id` 一一对应 |
+| `chain_id` | int64 | 产生该探测的外源裂变链编号 |
+| `generation` | int32 | 源中子为第 0 代，裂变子代逐代递增 |
+
+`pileup_group_id` 不存链编号，继续表示波形脉冲重叠分组。HDF5 元数据 `source_model` 记录选择，
+`source_model_derived_json` 保存反应率、时间尺度、Diven 因子和一阶探测率等计算值。派生量没有独立
+证据状态，其可信度继承输入参数。
 
 完整数学合同见 `docs/model_spec.md`，项目范围与阶段门禁见 `docs/PROJECT_SPEC.md`。

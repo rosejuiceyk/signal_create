@@ -2,9 +2,11 @@
 
 `he3-pulse-sim` is a staged research package for reproducible He-3 thermal-neutron
 detector signal simulation. The active codebase contains the reviewed Phase 0–3
-physical pipeline and the read-only Phase 4Q acquisition-qualification tools:
+physical pipeline, the Phase A pure-prompt correlated-arrival engine awaiting review,
+and the read-only Phase 4Q acquisition-qualification tools:
 
-- homogeneous-Poisson truth-event arrivals and a parameterized He-3 spectrum;
+- homogeneous-Poisson baseline or source-driven pure-prompt branching-chain arrivals;
+- optional event lineage sidecars plus a parameterized He-3 spectrum;
 - peak-normalized double-exponential pulses and continuous waveform synthesis;
 - baseline/noise, clipping, ADC quantization, triggering, and observation-layer dead time;
 - compressed HDF5 datasets, inspection, plotting, and deterministic validation;
@@ -13,8 +15,8 @@ physical pipeline and the read-only Phase 4Q acquisition-qualification tools:
 The former local Web interface and the Phase 5/6 machine-learning routes are archived under
 [`archive/`](archive/). They are no longer installed, imported, exposed by the CLI, or included in
 the active test suite. The project mainline now targets a correlated-neutron-noise signal-level
-digital twin; see [`docs/ROADMAP_v2.md`](docs/ROADMAP_v2.md). This cleanup does not implement any
-new roadmap phase.
+digital twin; see [`docs/ROADMAP_v2.md`](docs/ROADMAP_v2.md). Phase A implements only the
+pure-prompt source-on-window model; delayed neutrons and noise inversion remain future phases.
 
 All demonstration values are labelled `synthetic_demo`. They are not measured or calibrated
 detector, preamplifier, digitizer, trigger, or oscilloscope parameters.
@@ -48,11 +50,13 @@ git diff --check
 ```powershell
 he3sim validate-config -c configs/demo_minimal.yaml
 he3sim simulate-events -c configs/demo_minimal.yaml -o outputs/phase01_events.h5
+he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/phaseA_events.h5
 he3sim validate-arrivals -c configs/demo_minimal.yaml -o outputs/phase01_validation
 ```
 
-The truth-event HDF5 contains `/events/true` and `/metadata`. The in-memory generator enforces an
-explicit expected-event safety limit.
+The truth-event HDF5 contains `/events/true` and `/metadata`; correlated outputs additionally contain
+`/events/lineage` with `event_id`, `chain_id`, and `generation`. The in-memory generator enforces
+explicit expected-event, chain-generation, reaction-count, and realized-event limits.
 
 ## Continuous waveforms
 

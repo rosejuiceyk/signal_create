@@ -21,7 +21,7 @@ from he3sim.analysis.waveform_plot import (
     plot_waveform_hdf5,
 )
 from he3sim.calibration.qualification import qualify_acquisition
-from he3sim.config import WaveformRenderer, config_hash, load_config
+from he3sim.config import SourceModelKind, WaveformRenderer, config_hash, load_config
 from he3sim.io.dataset import write_dataset_hdf5
 from he3sim.io.hdf5 import inspect_hdf5, write_true_events_hdf5, write_waveform_hdf5
 from he3sim.physics.arrivals import ArrivalAlgorithm
@@ -83,6 +83,13 @@ def simulate_events_command(
         int,
         typer.Option(help="Explicit in-memory safety limit for expected events."),
     ] = DEFAULT_MAX_EXPECTED_EVENTS,
+    source_model: Annotated[
+        SourceModelKind | None,
+        typer.Option(
+            "--source-model",
+            help="Optional truth-arrival source override; defaults to the configuration.",
+        ),
+    ] = None,
 ) -> None:
     """Generate and persist truth events without rendering a waveform."""
     try:
@@ -91,6 +98,7 @@ def simulate_events_command(
             config,
             algorithm=algorithm,
             max_expected_events=max_expected_events,
+            source_model=source_model,
         )
         written_path = write_true_events_hdf5(output_path, simulation, config)
     except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
@@ -98,6 +106,7 @@ def simulate_events_command(
         raise typer.Exit(code=2) from exc
     typer.echo(f"wrote {simulation.events.size} truth events: {written_path}")
     typer.echo(f"arrival_algorithm: {simulation.arrival_algorithm.value}")
+    typer.echo(f"source_model: {simulation.source_model.value}")
     typer.echo(f"config_hash: {config_hash(config)}")
 
 
