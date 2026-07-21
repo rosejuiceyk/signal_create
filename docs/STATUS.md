@@ -2,13 +2,14 @@
 
 ## 当前阶段
 
-- 当前任务：Phase A 静态可视化验收增量已通过人工审核；等待下一阶段单独授权
-- 当前状态：`human_review_passed`
-- 活动物理基线：Phase 0–3 + Phase A；泊松仍为默认非相关基线
+- 当前任务：Phase C 连续信号中子噪声分析自动验收完成；等待人工审核
+- 当前状态：`awaiting_human_review`
+- 活动物理基线：Phase 0–3 + Phase A + Phase B + Phase C；泊松仍为默认非相关基线
+- Phase HIL：用户明确跳过，CCF/CTM 估计器在 Phase C 中直接实现
 - Phase 4：`deferred`
 - Phase 3.5、Phase 5、Phase 6/6S：`archived`
 - 后续主线：相关中子噪声信号级数字孪生，见 `docs/ROADMAP_v2.md`
-- 本次边界：只实现 Phase A；不进入 Phase B、延迟中子、HIL 或连续信号噪声分析
+- 本次边界：Phase C 连续信号 ACF/VTM、Wiener 去卷积、双探测器 CCF/CTM、可用边界
 
 ## 已确认的范围
 
@@ -34,8 +35,40 @@
 | 6/6S 网络 C | archived | 2026-07-18 | 正式路线与工程预演均移入 `archive/` |
 | M0 代码库精简 | human_review_passed | 2026-07-18 | 用户已明确确认人工验收通过 |
 | A 纯瞬发相关事件 | human_review_passed | 2026-07-19 | 核心生成器与静态可视化增量均经用户确认 |
+| B 脉冲模式噪声分析 | human_review_passed | 2026-07-19 | 三法复原、bootstrap、死时间偏置与七图报告；人工审核通过（2026-07-20） |
+| HIL DT5800 硬件在环 | skipped | | 用户明确跳过，CCF/CTM 在 Phase C 直接实现 |
+| C 连续信号噪声分析 | awaiting_human_review | 2026-07-20 | ACF/VTM/CCF/CTM/deconvolution + 可用边界扫描 + 壁效应敏感性 |
 
 ## 最近一次执行结果
+
+### 2026-07-20 Phase C 连续信号中子噪声分析（自动验收通过）
+
+- 连续 ACF/VTM：新增含探测器脉冲衰减常数 α_e 项的五参数模型拟合。
+- Wiener 去卷积：逆傅里叶 + Wiener 滤波，γ–NSR 稳定域热力扫描。
+- 双探测器 CCF/CTM：复用 Phase A 分支过程，各探测按 ε 分配通道；互协方差自动消除单通道脉冲自项。
+- 可用边界：扫描 3×4 (α, rate) 网格，绘出连续信号法 α 复原相对误差热力图。
+- 壁效应敏感性：变量壁效应混合权重，量化 w(η) 对 α 反演的影响。
+- 可视化：正式 CLI 生成 7 张 PNG、离线 HTML 和 JSON；普通图注使用中文，专业名词保留。
+- 工程 QA：Ruff、mypy、`git diff --check` 通过；全量 `pytest -q` 为 `196 passed`。
+- 范围：未进入缓发中子、全输运 Phase D、逆问题 ML、反应堆数据接入、交互仪表盘或 DT5800 HIL。
+- 当前结论：自动验收通过，状态为 `awaiting_human_review`；必须等待用户人工审核。
+
+
+
+### 2026-07-19 Phase B 脉冲模式噪声分析与 α 复原（自动验收）
+
+- 估计器：新增 Rossi-α、Feynman-α 和 PSD；拟合使用固定 `100–5000 s^-1` 边界，
+  不读取真值作为初值。Feynman/Rossi 的相关 bin 不确定度使用时间块 bootstrap。
+- 闭环：三组 `(alpha, epsilon, 真率)` 全部通过；最大 α 相对误差 `3.94%`，三方法最大差异
+  `2.37%`，均小于默认 `5%` 门限。
+- 死时间：扫描两组 α 与四组真率，应用非延长型 `4 us` synthetic_demo 死时间；Hazama/Mueller
+  一阶 VTM 修正至少在 75% 网格点减小偏置，从最低扫描率起的共同 `5%` 连续可用上限约
+  `10000 cps`。
+- 可视化：正式 CLI 生成 7 张 PNG、离线 HTML 和 JSON；普通图注使用中文，专业名词保留；
+  七图已逐图目检并修复图例遮挡。未实现交互仪表盘。
+- 工程 QA：指定 `signal_create` 环境已同步 SciPy 依赖；Ruff、mypy、`git diff --check` 通过，
+  全量 `pytest -q` 为 `167 passed`；正式 CLI 再运行通过。
+- 范围：未进入连续信号、HIL、缓发平台或反应堆数据。
 
 ### 2026-07-19 Phase A 静态可视化验收增量
 
@@ -218,6 +251,9 @@ YYYY-MM-DD | 决策 | 原因 | 影响范围 | 是否需用户确认
 ```
 
 ```text
+2026-07-19 | Phase B 的相关-bin 不确定度采用时间块 bootstrap，报告标准差取 bootstrap 与朴素拟合误差的保守上界 | 避免将共享事件产生的曲线 bin 误作独立观测 | analysis/noise、报告与验收 | 否，属于 Phase B 明确要求
+2026-07-19 | Hazama 死时间修正采用非延长型弱损失一阶 VTM lift Y_corr=Y_obs+2R_obs d，并显式报告可用边界 | 可复现公开的一阶修正且避免在高损失区声称无偏 | dead-time 网格、报告与限制 | 否，属于 Phase B 明确要求
+2026-07-19 | 后续新增图片的普通说明尽量使用中文，专业名词保留 | 落实用户的持续可视化表达要求 | analysis/figures 与报告 | 是，用户本轮明确要求
 2026-07-18 | Web/ML 路线只归档不删除，活动包不再安装或导入其依赖 | 保留历史可审计性并把主线切换到相关中子噪声 | archive、CLI、依赖与文档 | 是，用户已确认
 2026-07-11 | 可调数值逐字段保存 value/status/source/notes | 防止演示值、待审核值和已确认值混淆 | YAML 配置与未来元数据 | 否，属于已确认 Phase 0 计划
 2026-07-11 | 配置结构合法与可运行物理模拟分离 | 允许待标定值为 null，同时不伪造设备参数 | provisional 配置与后续运行门禁 | 否，属于已确认 Phase 0 计划

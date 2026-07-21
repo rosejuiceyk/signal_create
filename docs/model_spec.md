@@ -136,6 +136,35 @@ Phase 2 HDF5 同时保存软件裁剪前的 `/blocks/preclip_analog_samples` 与
 孤立脉冲特征从离散样本测量 `peak_V`、`integral_V_s`、`rise_time_10_90_s` 和
 `fall_time_90_10_s`，阈值交点使用线性插值。它们不是由 `tau_r_s` 或 `tau_d_s` 重命名得到。
 
+## Phase B 纯瞬发脉冲计数噪声合同
+
+Phase B 只消费有序探测时刻，不计算连续波形。三种估计器分别拟合：
+
+$$
+p(\tau)=B+A\exp(-\alpha|\tau|)
+$$
+
+$$
+Y(T)=Y_\infty\left[1-\frac{1-\exp(-\alpha T)}{\alpha T}\right]
+$$
+
+$$
+F(\omega)=C\left[1+Y_\infty\frac{\alpha^2}{\alpha^2+\omega^2}\right]
+$$
+
+Rossi-α 使用离散计数互相关，Feynman-α 使用非重叠门计数，PSD 使用 Welch 平均与洛伦兹
+对数谱拟合。拟合边界固定为 `100–5000 s^-1`，不得以设定 α 真值作为初值。时间块 bootstrap
+同时重采样整条曲线的所有 bin；报告标准差取 bootstrap 与朴素拟合误差的保守上界。
+
+非延长型死时间的弱损失一阶 VTM 修正为：
+
+$$
+Y_{\mathrm{corr}}(T)=Y_{\mathrm{obs}}(T)+2R_{\mathrm{obs}}d
+$$
+
+修正只在报告验证的连续可用率区间内解释；高损失区不声称无偏。该阶段不包含连续信号
+ACF/VTM、去卷积、双探测器 CCF 或缓发平台。
+
 ## 随机性与并行约定
 
 所有随机过程必须显式接收 `numpy.random.Generator`。根 seed 经

@@ -21,6 +21,22 @@ from he3sim.analysis.phase_a_validation import (
     build_phase_a_validation,
     write_phase_a_validation_report,
 )
+from he3sim.analysis.phase_b_validation import (
+    DEFAULT_BOOTSTRAP_REPLICATES,
+    DEFAULT_DEADTIME_EVENTS,
+    DEFAULT_RECOVERY_EVENTS,
+    analyze_phase_b_config,
+    build_phase_b_validation,
+    write_phase_b_analysis_report,
+    write_phase_b_validation_report,
+)
+from he3sim.analysis.phase_c_validation import (
+    DEFAULT_DUAL_EVENTS,
+    DEFAULT_FRONTIER_EVENTS,
+    DEFAULT_PHASEC_EVENTS,
+    build_phase_c_validation,
+    write_phase_c_validation_report,
+)
 from he3sim.analysis.reports import write_arrival_validation_report
 from he3sim.analysis.waveform_plot import (
     DEFAULT_MAX_OVERVIEW_POINTS,
@@ -196,6 +212,96 @@ def validate_correlated_command(
         f"{artifacts.metrics.maximum_rate_sweep_relative_error:.6g}"
     )
     typer.echo(f"degeneracy_ks_distance: {artifacts.metrics.degeneracy_ks_distance:.6g}")
+    typer.echo(f"result: {'passed' if artifacts.metrics.passed else 'failed'}")
+    if not artifacts.metrics.passed:
+        raise typer.Exit(code=3)
+
+
+@app.command("analyze-noise")
+def analyze_noise_command(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="YAML configuration with Phase B parameters."),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Directory for Phase B fit PNG/HTML output."),
+    ] = Path("outputs/phaseB_noise"),
+    target_events: Annotated[
+        int,
+        typer.Option(help="Expected events in the single-stream analysis."),
+    ] = DEFAULT_RECOVERY_EVENTS,
+    bootstrap_replicates: Annotated[
+        int,
+        typer.Option(help="Time-block bootstrap replicate count."),
+    ] = DEFAULT_BOOTSTRAP_REPLICATES,
+) -> None:
+    """Fit Rossi-alpha, Feynman-alpha, and PSD for one synthetic event stream."""
+    try:
+        base_config = load_config(config_path)
+        analysis_config, analysis = analyze_phase_b_config(
+            base_config,
+            target_events=target_events,
+            bootstrap_replicates=bootstrap_replicates,
+        )
+        report_path = write_phase_b_analysis_report(output_directory, analysis_config, analysis)
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
+        typer.echo(f"Phase B noise analysis failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Phase B noise report: {report_path}")
+    typer.echo("figures: 3 PNG")
+    for curve in (analysis.rossi, analysis.feynman, analysis.psd):
+        typer.echo(
+            f"{curve.fit.method}: alpha={curve.fit.alpha_per_s:.6g} "
+            f"+/- {curve.fit.alpha_std_per_s:.6g} s^-1"
+        )
+
+
+@app.command("validate-alpha-recovery")
+def validate_alpha_recovery_command(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="YAML configuration with Phase B parameters."),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Directory for Phase B validation artifacts."),
+    ] = Path("outputs/phaseB_recovery"),
+    recovery_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each alpha-recovery point."),
+    ] = DEFAULT_RECOVERY_EVENTS,
+    deadtime_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each dead-time grid point."),
+    ] = DEFAULT_DEADTIME_EVENTS,
+    bootstrap_replicates: Annotated[
+        int,
+        typer.Option(help="Time-block bootstrap replicates per recovery point."),
+    ] = DEFAULT_BOOTSTRAP_REPLICATES,
+) -> None:
+    """Run the Phase B multi-case alpha recovery and dead-time automated gate."""
+    try:
+        config = load_config(config_path)
+        artifacts = build_phase_b_validation(
+            config,
+            recovery_events=recovery_events,
+            deadtime_events=deadtime_events,
+            bootstrap_replicates=bootstrap_replicates,
+        )
+        report_path = write_phase_b_validation_report(output_directory, config, artifacts)
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
+        typer.echo(f"Phase B alpha recovery failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Phase B validation report: {report_path}")
+    typer.echo("figures: 7 PNG")
+    typer.echo(
+        f"maximum_recovery_relative_error: {artifacts.metrics.maximum_recovery_relative_error:.6g}"
+    )
+    typer.echo(
+        f"maximum_inter_method_difference: {artifacts.metrics.maximum_inter_method_difference:.6g}"
+    )
+    typer.echo(f"usable_rate_cps: {artifacts.metrics.usable_rate_cps:.6g}")
     typer.echo(f"result: {'passed' if artifacts.metrics.passed else 'failed'}")
     if not artifacts.metrics.passed:
         raise typer.Exit(code=3)
@@ -411,6 +517,93 @@ def qualify_acquisition_command(
     typer.echo(f"processed_events: {artifacts.processed_event_count}")
     typer.echo(f"scan_complete_runs: {artifacts.scan_complete_run_count}")
     typer.echo(f"scientific_exit_blocked: {str(artifacts.scientific_exit_blocked).lower()}")
+
+
+@app.command("analyze-continuous-noise")
+def analyze_continuous_noise_command(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="YAML configuration with Phase C parameters."),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Directory for Phase C continuous-noise artifacts."),
+    ] = Path("outputs/phaseC_continuous"),
+    recovery_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each alpha-recovery point."),
+    ] = DEFAULT_PHASEC_EVENTS,
+    dual_events: Annotated[
+        int,
+        typer.Option(help="Expected events for dual-detector CCF/CTM."),
+    ] = DEFAULT_DUAL_EVENTS,
+    frontier_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each frontier grid point."),
+    ] = DEFAULT_FRONTIER_EVENTS,
+) -> None:
+    """Run Phase C continuous-signal ACF, VTM, deconvolution, and CCF/CTM validation."""
+    try:
+        config = load_config(config_path)
+        artifacts = build_phase_c_validation(
+            config,
+            recovery_events=recovery_events,
+            dual_events=dual_events,
+            frontier_events=frontier_events,
+        )
+        report_path = write_phase_c_validation_report(output_directory, config, artifacts)
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
+        typer.echo(f"Phase C validation failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Phase C validation report: {report_path}")
+    typer.echo("figures: 7 PNG")
+    typer.echo(
+        f"maximum_continuous_acf_error: {artifacts.metrics.maximum_continuous_acf_error:.6g}"
+    )
+    typer.echo(
+        f"maximum_continuous_vtm_error: {artifacts.metrics.maximum_continuous_vtm_error:.6g}"
+    )
+    typer.echo(
+        f"continuous_vs_pulse_max_diff: {artifacts.metrics.continuous_vs_pulse_max_diff:.6g}"
+    )
+    typer.echo(f"usable_continuous_rate_cps: {artifacts.metrics.usable_continuous_rate_cps:.6g}")
+    typer.echo(f"result: {'passed' if artifacts.metrics.passed else 'failed'}")
+    if not artifacts.metrics.passed:
+        raise typer.Exit(code=3)
+
+
+@app.command("scan-usability-frontier")
+def scan_usability_frontier_command(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="Configuration for frontier grid scan."),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Directory for frontier scan artifacts."),
+    ] = Path("outputs/phaseC_frontier"),
+    frontier_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each frontier grid point."),
+    ] = DEFAULT_FRONTIER_EVENTS,
+) -> None:
+    """Scan the continuous-signal usability frontier across (alpha x rate) grid."""
+    try:
+        config = load_config(config_path)
+        artifacts = build_phase_c_validation(
+            config,
+            recovery_events=DEFAULT_PHASEC_EVENTS,
+            dual_events=DEFAULT_DUAL_EVENTS,
+            frontier_events=frontier_events,
+        )
+        report_path = write_phase_c_validation_report(output_directory, config, artifacts)
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
+        typer.echo(f"Phase C frontier scan failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Phase C frontier report: {report_path}")
+    typer.echo("figures: 7 PNG")
+    typer.echo(f"usable_continuous_rate_cps: {artifacts.metrics.usable_continuous_rate_cps:.6g}")
+    typer.echo(f"result: {'passed' if artifacts.metrics.passed else 'failed'}")
 
 
 def main() -> None:

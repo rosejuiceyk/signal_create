@@ -35,6 +35,10 @@ he3sim validate-config -c configs/demo_minimal.yaml
 he3sim simulate-events -c configs/demo_minimal.yaml -o outputs/events.h5
 he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/correlated_events.h5
 he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report
+he3sim analyze-noise -c configs/demo_minimal.yaml -o outputs/phaseB_noise
+he3sim validate-alpha-recovery -c configs/demo_minimal.yaml -o outputs/phaseB_recovery
+he3sim analyze-continuous-noise -c configs/demo_correlated.yaml -o outputs/phaseC_continuous
+he3sim scan-usability-frontier -c configs/demo_correlated.yaml -o outputs/phaseC_frontier
 he3sim simulate-waveform -c configs/demo_minimal.yaml -o outputs/waveform.h5
 he3sim plot-waveform outputs/waveform.h5 -o outputs/waveform.png
 he3sim generate-dataset -c configs/demo_minimal.yaml -o outputs/dataset
@@ -193,7 +197,7 @@ $$
 | `physics/` | 泊松到达、纯瞬发分支链、源模型映射、He-3 能谱、幅值、脉冲参数和真值事件 |
 | `synthesis/` | 连续波形、噪声、基线、裁剪、ADC 和多尺度数据集 |
 | `acquisition/` | 触发、死时间和真值事件关联 |
-| `analysis/` | 统计验证、脉冲特征、报告和波形绘图 |
+| `analysis/` | 统计验证、脉冲特征、报告、噪声估计（连续与脉冲模式）和波形绘图 |
 | `io/` | HDF5、MCNP、示波器、DT5800 stub 和数据集持久化 |
 | `calibration/` | 只读采集探针、四态 QC、来源追溯和 Phase 4Q 门禁 |
 | `he3sim/cli.py` | 活动命令入口，不导入归档 Web/ML 模块 |
@@ -247,6 +251,8 @@ QC 状态为 `pass`、`fail`、`not_evaluable` 或 `unknown`。当前 profile �
 - 没有空间电荷、气体增益随计数率变化、前放非线性恢复或真实饱和恢复；
 - 不包含示波器导入、真实标定、MCNP 自动运行或硬件控制；
 - Web 与生成式 ML 路线已归档，活动环境不安装 Streamlit 或 PyTorch。
+- Phase B 仅分析纯瞬发脉冲计数；不含连续信号、HIL、缓发平台、反应堆数据或交互仪表盘。
+- Phase C 连续信号方法使用合成数字孪生；CCF/CTM 未经过 DT5800 或真实电子学验证。
 
 ## 9. 相关事件 HDF5 数据格式
 

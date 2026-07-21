@@ -2,8 +2,8 @@
 
 `he3-pulse-sim` is a staged research package for reproducible He-3 thermal-neutron
 detector signal simulation. The active codebase contains the reviewed Phase 0–3
-physical pipeline, the reviewed Phase A pure-prompt correlated-arrival engine and static
-validation report,
+physical pipeline, the reviewed Phase A pure-prompt correlated-arrival engine, and the Phase B
+  pulse-counting noise analysis awaiting human review,
 and the read-only Phase 4Q acquisition-qualification tools:
 
 - homogeneous-Poisson baseline or source-driven pure-prompt branching-chain arrivals;
@@ -12,13 +12,15 @@ and the read-only Phase 4Q acquisition-qualification tools:
 - baseline/noise, clipping, ADC quantization, triggering, and observation-layer dead time;
 - compressed HDF5 datasets, inspection, plotting, and deterministic validation;
 - reusable Phase A Matplotlib figures plus an offline PNG/HTML validation report;
+- Rossi-alpha, Feynman-alpha, and PSD alpha recovery with bootstrap uncertainty and static reports;
 - read-only acquisition hashing, provenance checks, sampling-axis evidence, and event QC.
 
 The former local Web interface and the Phase 5/6 machine-learning routes are archived under
 [`archive/`](archive/). They are no longer installed, imported, exposed by the CLI, or included in
 the active test suite. The project mainline now targets a correlated-neutron-noise signal-level
-digital twin; see [`docs/ROADMAP_v2.md`](docs/ROADMAP_v2.md). Phase A implements only the
-pure-prompt source-on-window model; delayed neutrons and noise inversion remain future phases.
+digital twin; see [`docs/ROADMAP_v2.md`](docs/ROADMAP_v2.md). Phase B now implements only
+  pure-prompt pulse-counting inversion; delayed neutrons and continuous-signal inversion remain
+  future phases.
 
 All demonstration values are labelled `synthetic_demo`. They are not measured or calibrated
 detector, preamplifier, digitizer, trigger, or oscilloscope parameters.
@@ -55,6 +57,8 @@ he3sim simulate-events -c configs/demo_minimal.yaml -o outputs/phase01_events.h5
 he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/phaseA_events.h5
 he3sim validate-arrivals -c configs/demo_minimal.yaml -o outputs/phase01_validation
 he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report
+he3sim analyze-noise -c configs/demo_minimal.yaml -o outputs/phaseB_noise
+he3sim validate-alpha-recovery -c configs/demo_minimal.yaml -o outputs/phaseB_recovery
 ```
 
 The truth-event HDF5 contains `/events/true` and `/metadata`; correlated outputs additionally contain
@@ -62,6 +66,9 @@ The truth-event HDF5 contains `/events/true` and `/metadata`; correlated outputs
 explicit expected-event, chain-generation, reaction-count, and realized-event limits.
 The Phase A report writes six PNG figures, an offline HTML report, and machine-readable metrics JSON;
 it does not provide an interactive dashboard.
+The Phase B validation report writes seven Chinese-annotated PNG figures, an offline HTML report,
+and JSON metrics. Scientific names such as Rossi-alpha, Feynman-alpha, PSD, and Y-infinity remain
+unchanged; no interactive dashboard is included.
 
 ## Continuous waveforms
 

@@ -14,6 +14,10 @@
 - [`phase_03_dataset.md`](phase_03_dataset.md)：Phase 3：触发、死时间、多尺度数据集与性能
 - [`phase_04q_data_qualification.md`](phase_04q_data_qualification.md)：Phase 4Q：数据资格与采样轴确认
 - [`phase_04_calibration.md`](phase_04_calibration.md)：Phase 4：示波器数据标定与实测模板（deferred）
+- [`phase_A_prompt_generator.md`](phase_A_prompt_generator.md)：Phase A：纯瞬发相关事件（已人工通过）
+- [`phase_B_noise_analysis.md`](phase_B_noise_analysis.md)：Phase B：三法 α 复原与死时间偏置（已人工通过）
+- [`phase_DT5800_hil.md`](phase_DT5800_hil.md)：Phase HIL：DT5800 硬件在环（用户跳过）
+- [`phase_C_continuous_signal.md`](phase_C_continuous_signal.md)：Phase C：连续信号噪声分析（计划中）
 
-后续相关中子噪声阶段只以 [`docs/ROADMAP_v2.md`](../ROADMAP_v2.md) 为路线参考；本次精简不实现
-其中任何新阶段。
+后续相关中子噪声阶段以 [`docs/ROADMAP_v2.md`](../ROADMAP_v2.md) 为路线参考；Phase B 已通过，
+Phase C 计划中。后续阶段仍受单阶段门禁约束。

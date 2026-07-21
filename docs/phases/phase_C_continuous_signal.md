@@ -1,8 +1,8 @@
 # Phase C：连续信号中子噪声分析（He-3 前沿）
 
 - 阶段编号：C（论文/竞赛核心贡献）
-- 初始状态：`not_started`
-- 前置阶段：Phase B 已通过；Phase HIL 已通过（双探测器 CCF 估计器与电子学背书就绪）
+- 初始状态：`awaiting_human_review`
+- 前置阶段：Phase B 已通过（人工审核通过 2026-07-20）；Phase HIL 已由用户明确跳过
 - 执行原则：本阶段通过验收后停止，未经用户确认不得进入下一阶段。
 
 ## 开始前必读
@@ -75,7 +75,24 @@ he3sim analyze-continuous-noise -c configs/demo_correlated.yaml -o outputs/phase
 he3sim scan-usability-frontier -c configs/frontier_scan.yaml -o outputs/phaseC_frontier
 ```
 
-## 可直接发送给 Codex 的执行提示词
+## 2026-07-20 实施与自动验收记录
+
+- 新增 `analysis/continuous_noise.py`：连续电压 ACF/VTM（含 α_e 项）、Wiener 去卷积及 γ–NSR
+  稳定域扫描、双探测器互协方差 CCF 与 CTM。
+- 新增 `physics/split_detector.py`：将 Phase A 分支过程探测按效率分配到两个模拟通道。
+- 新增 `analysis/phase_c_validation.py`：三组 α 闭环、可用边界 3×4 网格扫描、壁效应敏感性分析，
+  以及 7 张静态 PNG、离线 HTML 和 JSON 的统一生成。
+- `analysis/figures.py` 新增 7 个 Phase C 图函数，只消费预计算数据，普通图注使用中文。
+- `cli.py` 新增 `analyze-continuous-noise` 与 `scan-usability-frontier` 两个命令。
+- 新增 `configs/demo_correlated.yaml`，`source_model.kind` 为 `correlated`，脉冲形状与
+  连续信号分析演示参数。
+- 新增测试：`tests/unit/test_continuous_noise.py`（ACF/VTM/CCF 模型与拟合）、
+  `tests/unit/test_deconvolution.py`（Wiener 去卷积与阈值化）、
+  `tests/integration/test_usability_frontier.py`（全流程 CLI 与报告产物）。
+- 未实现缓发中子、全输运 Phase D、逆问题 ML、反应堆数据接入、交互仪表盘或 DT5800 HIL。
+- 指定环境全量验收：Ruff 与 mypy 通过；`pytest -q` 为 `196 passed`。
+- 自动验收已通过，现停止在 `awaiting_human_review`，不得自动进入下一阶段。
+
 
 ```text
 执行 Phase C（He-3 连续信号中子噪声分析）。

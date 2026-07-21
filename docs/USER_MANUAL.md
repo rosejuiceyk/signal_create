@@ -30,6 +30,8 @@
 | 5 | 条件标记事件网络 A | 已归档 | 不再审核 |
 | 6/6S | 残差网络路线 | 已归档 | 不再审核 |
 | A | 纯瞬发相关事件、lineage 与静态验证图 | 已通过 | 已通过（2026-07-19） |
+| B | 脉冲模式噪声分析、三法 α 复原与死时间偏置 | 已通过 | 已通过（2026-07-20） |
+| C | 连续信号 ACF/VTM/去卷积/CCF 与可用边界 | 已通过 | 等待人工审核 |
 
 ## 3. 环境与通用约定
 
@@ -806,6 +808,103 @@ python -m pytest -q
 | 结论 | 通过 |
 | 问题与备注 | 原核心生成器审核记录保留；Phase B 仍须单独授权 |
 
+### 10.7 Phase B 脉冲模式噪声分析与人工审核
+
+Phase B 使用 Phase A 相关事件的理想探测时刻作为触发候选，分别执行 Rossi-α、Feynman-α 和
+PSD 拟合，并用固定 seed 闭合“设定 α → 反演 α → 与真值比较”。全部演示参数仍为
+`synthetic_demo`，不能解释为真实探测器或反应堆结果。
+
+从仓库内层根目录运行：
+
+```powershell
+conda activate signal_create
+he3sim analyze-noise -c configs/demo_minimal.yaml -o outputs/phaseB_noise
+he3sim validate-alpha-recovery -c configs/demo_minimal.yaml -o outputs/phaseB_recovery
+```
+
+第一条命令生成单工况三张拟合图、`phase_b_noise.html` 和 `phase_b_noise.json`。第二条是正式阶段
+门禁，生成以下七张中文普通说明静态图：
+
+1. Rossi-α 时间差直方图与指数拟合；
+2. Feynman-α `Y(T)` 曲线与单指数拟合；
+3. PSD 与洛伦兹拟合、拐点 `α/2π`；
+4. 三方法 α 复原 parity 图；
+5. 三方法相对误差并排图；
+6. Hazama 一阶 VTM 修正前后的死时间偏置与可用边界；
+7. 时间块 bootstrap α 分布与朴素误差对比。
+
+报告中的 α 单位为 `s^-1`，计数率单位为 `cps`，时间为秒或毫秒，频率为 `Hz`。图片里普通标题、
+坐标说明和解释尽量使用中文；Rossi-α、Feynman-α、PSD、VTM、Y∞ 等专业名词保留。
+
+正式自动验收结果：三组 `(alpha, epsilon, 计数率)` 的最大 α 相对误差为 `3.94%`，三方法最大
+差异为 `2.37%`；时间块 bootstrap 的报告误差比朴素独立-bin 拟合更保守。`4 us` 非延长型
+synthetic_demo 死时间的 `2 × 4` 网格中，Hazama 一阶修正使至少 75% 工况的偏置减小，共同
+`5%` 连续可用上限约为 `10000 cps`。
+
+人工审核清单：
+
+- 打开 `outputs/phaseB_recovery/phase_b_validation.html`，确认结果显示“通过”；
+- 查看 parity 图的九个点是否均落在 ±5% 灰带内，误差棒是否可见；
+- 查看 Rossi、Feynman 和 PSD 拟合是否贴合数据，且 α、Y∞、A/B 或拐点标注清楚；
+- 查看死时间图中修正后曲线是否比修正前更接近 1，并确认高率失效区没有被写成可用；
+- 查看 bootstrap 图是否同时显示朴素误差和相关性修正误差；
+- 确认七张图的普通说明为中文，且没有遮挡、乱码或裁切。
+
+已知限制：Hazama 实现是非延长型死时间的弱损失一阶 VTM lift，超过已报告可用边界后不保证
+无偏；没有连续信号 ACF/VTM、去卷积、双探测器 CCF、DT5800 HIL、缓发平台、反应堆数据或
+交互仪表盘。自动验收通过后状态为 `awaiting_human_review`，必须等待用户结论。
+
+| 项目 | 填写内容 |
+|---|---|
+| 自动验收时间（含时区） | 2026-07-19（Asia/Shanghai） |
+| 自动验收 | 167 项测试、Ruff、mypy 通过；最大复原误差 3.94%；最大方法差异 2.37% |
+| 正式产物 | `outputs/phaseB_recovery/`：7 PNG + HTML + JSON |
+| 审核人 | 用户 |
+| 人工审核时间（含时区） | 2026-07-20（Asia/Shanghai） |
+| 结论 | 通过 |
+| 问题与备注 | Phase HIL 被跳过；Phase C 已授权 |
+
+### 10.8 Phase C 连续信号噪声分析与人工审核
+
+Phase C 对连续电压波形直接计算自协方差 ACF(θ)、方差均值比 VTM(T)、Wiener
+去卷积，以及双探测器互协方差 CCF/CTM。ACF/VTM 拟合含探测器脉冲衰减常数 α_e
+项的模型，去卷积扫描 γ–NSR 稳定域。可用边界在 3×4 的 (α, 率) 网格上评估。
+
+从仓库内层根目录运行：
+
+```powershell
+conda activate signal_create
+he3sim analyze-continuous-noise -c configs/demo_correlated.yaml -o outputs/phaseC_continuous
+he3sim scan-usability-frontier -c configs/demo_correlated.yaml -o outputs/phaseC_frontier
+```
+
+`analyze-continuous-noise` 生成 7 张静态图：
+
+1. 连续 ACF 及其含 α_e 项的双指数拟合；
+2. 连续 VTM 拟合；
+3. Wiener 去卷积原始/去卷积/阈值化三面板；
+4. γ–NSR 稳定域热力图；
+5. 双探测器 CCF/CTM 双子图；
+6. 可用边界 (α, 率) 相对误差热力图；
+7. 壁效应敏感性曲线。
+
+同时生成离线 `phase_c_validation.html` 和 `phase_c_validation.json`。
+所有普通说明使用中文，专业名词保留。
+
+已知限制：CCF/CTM 使用同一中子场数字孪生，未经过 DT5800 或真实电子学验证
+（Phase HIL 已跳过）。壁效应敏感性仍为 synthetic_demo 参数化谱。
+自动验收通过后状态为 `awaiting_human_review`，必须等待用户结论。
+
+| 项目 | 填写内容 |
+|---|---|
+| 自动验收时间（含时区） | 2026-07-20（Asia/Shanghai） |
+| 自动验收 | 196 项测试、Ruff、mypy 通过 |
+| 正式产物 | `outputs/phaseC_frontier/` 或 `outputs/phaseC_continuous/`：7 PNG + HTML + JSON |
+| 审核人 | 待用户填写 |
+| 人工审核时间（含时区） | 待填写 |
+| 结论 | `awaiting_human_review` |
+| 问题与备注 | Phase HIL 已跳过；不含交互仪表盘 |
+
 ## 11. 如何提交人工审核结论
 
 完成某一 Phase 的检查后，向 Codex 明确发送以下任一结论：
@@ -862,3 +961,4 @@ Phase X 人工审核不通过。问题如下：……。只修复这些问题并
 | 2026-07-19 | 3.2 | 记录 Phase A 人工审核通过；保持 Phase B 未授权 |
 | 2026-07-19 | 3.3 | 新增 Phase A 六图静态 PNG/HTML 报告及数据级测试；重新等待人工复核 |
 | 2026-07-19 | 3.4 | 记录 Phase A 可视化增量人工审核通过；保持 Phase B 未授权 |
+| 2026-07-19 | 3.5 | 新增 Phase B 三法 α 复原、bootstrap、死时间修正、七图报告与人工审核清单 |

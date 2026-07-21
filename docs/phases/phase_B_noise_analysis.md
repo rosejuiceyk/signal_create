@@ -1,7 +1,7 @@
 # Phase B：脉冲模式噪声分析与 α 复原闭环
 
 - 阶段编号：B
-- 初始状态：`not_started`
+- 当前状态：`human_review_passed`
 - 前置阶段：Phase A（纯瞬发）已通过人工审核
 - 执行原则：本阶段通过验收后停止，未经用户确认不得进入下一阶段。
 
@@ -68,9 +68,36 @@
 建议命令：
 ```bash
 pytest -q tests/unit/test_noise_estimators.py tests/integration/test_alpha_recovery.py
-he3sim analyze-noise -c configs/demo_correlated.yaml -o outputs/phaseB_noise
-he3sim validate-alpha-recovery -c configs/demo_correlated.yaml -o outputs/phaseB_recovery
+he3sim analyze-noise -c configs/demo_minimal.yaml -o outputs/phaseB_noise
+he3sim validate-alpha-recovery -c configs/demo_minimal.yaml -o outputs/phaseB_recovery
 ```
+
+## 2026-07-19 实施与自动验收记录
+
+- `analysis/noise.py` 已实现 Rossi-α、Feynman-α、PSD 三估计器；拟合边界固定为
+  `100–5000 s^-1`，不读取真值作为初值。
+- Feynman/Rossi 的 bin 相关不确定度使用时间块 bootstrap；报告标准差取 bootstrap 与朴素
+  曲线拟合误差的保守上界，并分别保存二者。
+- 闭环覆盖三组 `(alpha, epsilon, 真计数率)`；正式报告最大 α 相对误差 `3.94%`，三方法最大
+  差异 `2.37%`，均小于默认 `5%` 门限。
+- 非延长型 `4 us` synthetic_demo 死时间扫描覆盖 `2 × 4` 个 `(alpha, 真率)` 点；实现并标明
+  Hazama/Mueller 弱损失一阶 VTM 修正 `Y_corr = Y_obs + 2 R_obs d`。共同 `5%` 可用上限为
+  `10000 cps`；该上限从最低扫描率连续满足门限的工况得到，超过边界不声称无偏。
+- `validate-alpha-recovery` 生成 7 张 PNG、离线 HTML 和 JSON。所有新增图片普通说明使用中文，
+  Rossi-α、Feynman-α、PSD、VTM、Y∞ 等专业名词保留。
+- 未实现交互仪表盘，以及连续信号、HIL、缓发平台或反应堆数据。
+
+### 2026-07-20 人工审核记录
+
+| 项目 | 填写内容 |
+|---|---|
+| 审核人 | 用户 |
+| 审核时间（含时区） | 2026-07-20（Asia/Shanghai） |
+| 正式产物 | `outputs/phaseB_recovery/`：7 PNG + HTML + JSON |
+| 结论 | 通过 |
+| 备注 | Phase HIL 被明确跳过；Phase C 已授权开始
+- 指定环境全量验收：Ruff 与 mypy 通过，`pytest -q` 为 `167 passed`；正式 CLI 报告通过。
+- 自动验收已通过；2026-07-20 用户人工审核通过。Phase HIL 已被用户跳过；Phase C 已授权。
 
 ## 可直接发送给 Codex 的执行提示词
 
