@@ -40,6 +40,7 @@ class ContinuousACFFit:
     phi: float
     psi1: float
     psi2: float
+    baseline: float
     r_squared: float
 
 
@@ -259,6 +260,7 @@ def fit_continuous_acf(
         phi=float(amplitude),
         psi1=0.0,
         psi2=0.0,
+        baseline=float(baseline),
         r_squared=_r_squared(values_trunc, baseline + amplitude * np.exp(-alpha * lags_trunc)),
     )
 

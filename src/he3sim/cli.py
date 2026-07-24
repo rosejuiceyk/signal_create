@@ -606,6 +606,67 @@ def scan_usability_frontier_command(
     typer.echo(f"result: {'passed' if artifacts.metrics.passed else 'failed'}")
 
 
+@app.command("export-dashboard")
+def export_dashboard_command(
+    output_dir: Annotated[
+        str,
+        typer.Option("--output-dir", "-d", help="Directory with analysis results."),
+    ] = "outputs",
+    out_path: Annotated[
+        str | None,
+        typer.Option("--out", "-o", help="Output HTML path."),
+    ] = None,
+) -> None:
+    """Generate an offline self-contained HTML dashboard from existing results."""
+    from he3sim.ui.offline_dashboard import generate_offline_dashboard
+
+    try:
+        result = generate_offline_dashboard(output_dir, out_path)
+    except Exception as exc:
+        typer.echo(f"dashboard generation failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"offline dashboard: {result}")
+
+
+@app.command("ui")
+def ui_command(
+    port: Annotated[
+        int,
+        typer.Option("--port", "-p", help="Streamlit server port."),
+    ] = 8501,
+) -> None:
+    """Launch the interactive Streamlit web interface."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    import he3sim.ui
+
+    app_path = Path(he3sim.ui.__file__).parent / "app.py"
+    if not app_path.exists():
+        typer.echo(f"UI entry point not found: {app_path}", err=True)
+        raise typer.Exit(code=2)
+    try:
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "streamlit",
+                "run",
+                str(app_path),
+                "--server.port",
+                str(port),
+                "--browser.serverAddress",
+                "127.0.0.1",
+            ],
+            check=True,
+        )
+    except KeyboardInterrupt:
+        typer.echo("\nUI server stopped.")
+    except subprocess.CalledProcessError:
+        typer.echo("UI server exited with an error.", err=True)
+
+
 def main() -> None:
     """Run the Typer application."""
     app()

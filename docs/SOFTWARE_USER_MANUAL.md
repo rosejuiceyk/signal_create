@@ -18,7 +18,7 @@ YAML 和 JSON。
 
 ```powershell
 conda activate signal_create
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,ui]"
 ```
 
 活动 CLI 只提供配置校验、事件/波形/数据集生成、HDF5 检查与绘图、物理验证，以及只读采集数据
@@ -48,6 +48,46 @@ he3sim qualify-acquisition --input <DAQ目录> --profile configs/acquisition_pro
 
 波形和数据集 HDF5 保存真值事件、分块索引、裁剪前/后的模拟电压、ADC 和饱和标记。Phase 3
 数据集另外保存触发、死时间、事件关联和固定窗口。所有派生产物写入 `outputs/`，原始采集目录保持只读。
+
+### 2.1 本地交互界面
+
+在项目根目录启动只监听本机的 Streamlit 界面：
+
+```powershell
+streamlit run src/he3sim/ui/app.py --server.address 127.0.0.1
+```
+
+界面包含事件生成、连续波形、脉冲模式噪声和连续信号噪声四个页面。参数采用单一数值输入框，
+既可键入，也可用右侧加减按钮微调；同一参数不再同时出现滑块和输入框。每个计算页把最近一次成功结果
+分别保存在当前浏览器会话中，切换页面不会清除已有指标和图表。刷新浏览器、关闭标签页或重启服务会
+开始新会话，不应把会话状态当作长期存档。
+
+界面不提供历史结果浏览页。长期结果继续保存在 `outputs/`，可通过文件管理器或对应的静态 HTML、PNG、
+JSON 文件查看。参数真实性和会话保留说明不再作为计算结果区的重复页脚展示，但相关状态仍写入配置与
+输出元数据。
+
+### 2.2 Windows 11 免安装便携版
+
+正式便携产物位于 `dist/He3Signal-Win11-x64.zip`。目标电脑不需要安装 Python、Conda 或项目依赖：
+
+1. 把 ZIP 完整复制到 Windows 11 64 位电脑并解压；
+2. 双击解压目录中的 `He3Signal.exe`；
+3. 启动控制器在后台启动仅监听 `127.0.0.1` 的本地服务，并自动打开默认浏览器；
+4. 控制器随后最小化到任务栏；恢复并关闭控制器或点击“退出软件”会同时停止后台服务；
+5. 再次双击时若软件已经运行，只会重新打开现有页面，不会创建第二个服务。
+
+`outputs/` 和 `logs/` 在 EXE 所在目录按需创建。复制或备份时应保留整个 `He3Signal` 文件夹，不能只复制
+EXE 或删除 `_internal/`。当前构建未使用商业代码签名证书，因此首次运行可能触发 Windows SmartScreen
+的“未知发布者”提示。发行包内的 `PORTABLE_README.txt` 提供同样的离线说明。
+
+维护者可在项目根目录重新构建：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_portable.ps1
+```
+
+构建脚本使用 `signal_create` 环境中的 PyInstaller，生成 onedir 文件夹并压缩为 Win11 x64 ZIP。打包清单
+明确排除 PyTorch、TensorFlow、JAX 等当前界面不使用的可选框架。
 
 ## 3. 物理原型
 
@@ -250,8 +290,9 @@ QC 状态为 `pass`、`fail`、`not_evaluable` 或 `unknown`。当前 profile �
 - 能谱、增益、时间常数、噪声、量程和 ADC 尚未真实标定；
 - 没有空间电荷、气体增益随计数率变化、前放非线性恢复或真实饱和恢复；
 - 不包含示波器导入、真实标定、MCNP 自动运行或硬件控制；
-- Web 与生成式 ML 路线已归档，活动环境不安装 Streamlit 或 PyTorch。
-- Phase B 仅分析纯瞬发脉冲计数；不含连续信号、HIL、缓发平台、反应堆数据或交互仪表盘。
+- 原 Phase 3.5 Web 后端与生成式 ML 路线已归档；当前只恢复本机 Streamlit 研究界面，不恢复远程服务，
+  也不安装或调用归档 ML。
+- Phase B CLI 报告仍为静态文件；本机界面仅用于调用现有分析并浏览会话结果，不含远程多用户仪表盘。
 - Phase C 连续信号方法使用合成数字孪生；CCF/CTM 未经过 DT5800 或真实电子学验证。
 
 ## 9. 相关事件 HDF5 数据格式

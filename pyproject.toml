@@ -25,6 +25,12 @@ dev = [
     "ruff>=0.5,<1",
     "types-PyYAML>=6,<7",
 ]
+ui = [
+    "streamlit>=1.59,<2",
+]
+doc = [
+    "python-docx>=1.2,<2",
+]
 [project.scripts]
 he3sim = "he3sim.cli:main"
 
@@ -51,3 +57,4 @@ python_version = "3.11"
 strict = true
 files = ["src"]
 warn_unreachable = true
+exclude = ["src/he3sim/ui/"]

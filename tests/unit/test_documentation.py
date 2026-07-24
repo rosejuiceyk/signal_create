@@ -6,7 +6,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_markdown_is_utf8_and_uses_supported_display_math_delimiters() -> None:
-    markdown_files = sorted(PROJECT_ROOT.rglob("*.md"))
+    generated_directories = {"build", "dist"}
+    markdown_files = sorted(
+        path
+        for path in PROJECT_ROOT.rglob("*.md")
+        if generated_directories.isdisjoint(path.relative_to(PROJECT_ROOT).parts)
+    )
     assert markdown_files
 
     for path in markdown_files:

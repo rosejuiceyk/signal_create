@@ -2,14 +2,15 @@
 
 ## 当前阶段
 
-- 当前任务：Phase C 连续信号中子噪声分析自动验收完成；等待人工审核
+- 当前任务：Windows 11 免安装便携版自动验收完成；等待跨机器人工审核
 - 当前状态：`awaiting_human_review`
 - 活动物理基线：Phase 0–3 + Phase A + Phase B + Phase C；泊松仍为默认非相关基线
 - Phase HIL：用户明确跳过，CCF/CTM 估计器在 Phase C 中直接实现
 - Phase 4：`deferred`
-- Phase 3.5、Phase 5、Phase 6/6S：`archived`
+- Phase 3.5 原后端已归档；本机研究界面增量为 `awaiting_human_review`
+- Phase 5、Phase 6/6S：`archived`
 - 后续主线：相关中子噪声信号级数字孪生，见 `docs/ROADMAP_v2.md`
-- 本次边界：Phase C 连续信号 ACF/VTM、Wiener 去卷积、双探测器 CCF/CTM、可用边界
+- 本次边界：只增加本机 Streamlit 的 Win11 x64 便携启动和打包，不改变物理算法
 
 ## 已确认的范围
 
@@ -28,7 +29,7 @@
 | 1 事件与能谱 | human_review_passed | 2026-07-13 | 历史审核通过 |
 | 2 连续波形 | human_review_passed | 2026-07-13 | 历史审核通过 |
 | 3 触发与数据集 | human_review_passed | 2026-07-13 | 历史审核通过 |
-| 3.5 本地 Web | archived | 2026-07-18 | 源码、测试与文档移入 `archive/` |
+| 3.5 本地 Web | awaiting_human_review | 2026-07-24 | 四个本机计算页已生成 Win11 x64 免安装便携包 |
 | 4 示波器标定 | deferred |  | 等待合格实测数据和用户授权 |
 | 4Q 数据资格 | awaiting_human_review | 2026-07-15 | 保留只读资格审查；科学出口仍 blocked |
 | 5 网络 A | archived | 2026-07-18 | 历史实现移入 `archive/` |
@@ -40,6 +41,49 @@
 | C 连续信号噪声分析 | awaiting_human_review | 2026-07-20 | ACF/VTM/CCF/CTM/deconvolution + 可用边界扫描 + 壁效应敏感性 |
 
 ## 最近一次执行结果
+
+### 2026-07-24 Windows 11 免安装便携版（自动验收通过）
+
+- 启动器：新增无控制台 Tkinter 控制器；后台子进程运行 Streamlit，动态选择空闲端口并只监听
+  `127.0.0.1`，自动打开默认浏览器，关闭控制器会终止服务并清理运行记录。
+- 重复启动：运行记录保存 PID/端口；第二次双击只打开现有 URL，不创建第二组进程。
+- 资源路径：源代码运行和 PyInstaller 冻结运行分别解析配置与页面资源；`outputs/`、`logs/` 固定写到
+  便携 EXE 所在目录。
+- 打包：新增 `he3signal_portable.spec`、`scripts/build_portable.ps1` 和包内中文说明；排除未使用的
+  PyTorch/TensorFlow/JAX 等可选框架，目录从首次误收集的约 3.14 GB 降至约 318.5 MB。
+- 产物：`dist/He3Signal/` 与 `dist/He3Signal-Win11-x64.zip`；ZIP 大小 `140886819` bytes，
+  SHA-256 为 `B6145C8494D280F5FFA854714F87E14FBB5E55D3549A3189EE77FDCE3D4F5D27`。
+- 自动验收：96 项单元测试（含启动器 4 项）、Ruff、mypy、UI 编译和四页 AppTest 通过；打包 EXE 实际启动后，
+  事件生成成功且四页均无 Streamlit 异常；重复启动进程数保持 2；向控制器发送标准关闭消息后两个进程
+  均退出且 `.he3signal-runtime.json` 被删除。
+- 限制：当前没有代码签名证书，SmartScreen 可能提示未知发布者；尚未在第二台无 Python 的 Win11
+  电脑上完成人工复制审核。
+- 当前结论：本机自动验收通过，状态为 `awaiting_human_review`；必须完成跨机器人工审核后才能确认交付。
+
+### 2026-07-24 本地交互界面精简（自动检查通过）
+
+- 页面提示：删除四个计算页结果区的 `synthetic_demo`、设备标定和浏览器会话保留提示；配置、JSON、
+  HDF5 等科研追溯信息不变。
+- 功能导航：删除侧栏“历史”分组与“历史结果浏览”页面，同时删除只为该页面服务的路径模块和单元测试。
+- 状态行为：各计算页最近一次成功结果仍保存在当前浏览器会话内，切换页面不会清除，只是不再显示说明页脚。
+- 自动检查：UI 编译、Ruff、`git diff --check`、92 项单元测试和 4 个页面的 Streamlit AppTest 冒烟检查通过。
+- 当前结论：界面代码与手册已同步，状态为 `awaiting_human_review`；不改变物理算法和 Phase C 科学状态。
+
+### 2026-07-23 本地交互界面可用性修订（自动检查通过）
+
+- 参数输入：移除同一参数的滑块/数值框组合，统一为可键入并可加减微调的数值输入框；独立的
+  bootstrap 次数滑块继续保留。
+- 历史浏览：输出根目录基于模块位置解析，递归发现嵌套报告，并在生成 HTML 链接前解析为绝对路径；
+  JSON 解析与图片加载失败会显示具体提示，不再静默吞掉。
+- 页面状态：事件、波形、Phase B 和 Phase C 页面分别保存最近一次成功结果；结果展示移到提交条件之外，
+  页面切换后重新执行脚本仍会从当前浏览器会话恢复。
+- 内存边界：波形与连续噪声页面只保存重绘所需的截取数据、拟合结果和指标，不长期保留完整大数组。
+- 自动检查：UI 模块编译、Ruff、mypy、94 项单元测试和 5 个页面的 Streamlit AppTest 冒烟检查通过；
+  全量测试因既有统计/集成测试在 5 分钟上限内未完成而终止，未观察到失败输出。
+- 浏览器检查：相关源参数只显示单一数值框；生成事件后切换到波形页再返回，指标与三张图仍存在；
+  历史页无 Streamlit 异常，报告链接均为绝对 `file:///` URI。
+- 当前结论：自动检查通过，状态为 `awaiting_human_review`；不改变 Phase C 原科学审核状态。
+- 后续变更：本节记录的历史结果浏览页已按 2026-07-24 用户要求删除。
 
 ### 2026-07-20 Phase C 连续信号中子噪声分析（自动验收通过）
 
