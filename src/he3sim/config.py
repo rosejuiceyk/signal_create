@@ -97,6 +97,127 @@ class SimulationDomainConfig(ConfigModel):
         return self
 
 
+class SourceModelKind(StrEnum):
+    """Truth-arrival source models available to the simulation pipeline."""
+
+    POISSON = "poisson"
+    CORRELATED = "correlated"
+
+
+class SourceModelConfig(ConfigModel):
+    """Pure-prompt one-speed branching-process inputs and software guards."""
+
+    kind: SourceModelKind = SourceModelKind.POISSON
+    k_eff: ParameterValue[float] | None = None
+    reactivity: ParameterValue[float] | None = None
+    alpha: ParameterValue[float] | None = None
+    detection_efficiency: ParameterValue[float] | None = None
+    nu_bar: ParameterValue[float] | None = None
+    nu_pmf: ParameterValue[list[float]] | None = None
+    source_rate_cps: ParameterValue[float] | None = None
+    max_chain_generation: StrictInt = Field(default=128, gt=0)
+    max_total_reactions: StrictInt = Field(default=1_000_000, gt=0)
+
+    def has_correlated_parameters(self) -> bool:
+        """Return whether any correlated-model parameter was supplied."""
+        fields = (
+            self.k_eff,
+            self.reactivity,
+            self.alpha,
+            self.detection_efficiency,
+            self.nu_bar,
+            self.nu_pmf,
+            self.source_rate_cps,
+        )
+        return any(parameter is not None for parameter in fields)
+
+    def resolved_k_eff(self) -> float:
+        """Return ``k_eff`` from the mutually exclusive direct or reactivity input."""
+        direct = self.k_eff.value if self.k_eff is not None else None
+        reactivity = self.reactivity.value if self.reactivity is not None else None
+        if (direct is None) == (reactivity is None):
+            raise ValueError("source_model requires exactly one of k_eff or reactivity")
+        if direct is not None:
+            return direct
+        assert reactivity is not None
+        return 1.0 / (1.0 - reactivity)
+
+    def expected_detected_rate_cps(self) -> float:
+        """Return the steady first-moment detection rate ``S*epsilon/(1-k)``."""
+        if self.source_rate_cps is None or self.source_rate_cps.value is None:
+            raise ValueError("correlated source_model requires source_rate_cps")
+        if self.detection_efficiency is None or self.detection_efficiency.value is None:
+            raise ValueError("correlated source_model requires detection_efficiency")
+        k_eff = self.resolved_k_eff()
+        return self.source_rate_cps.value * self.detection_efficiency.value / (1.0 - k_eff)
+
+    @model_validator(mode="after")
+    def validate_correlated_model(self) -> SourceModelConfig:
+        """Validate a complete pure-prompt parameter set without inventing data."""
+        if not self.has_correlated_parameters():
+            if self.kind is SourceModelKind.CORRELATED:
+                raise ValueError("correlated source_model requires physical parameters")
+            return self
+
+        required = {
+            "alpha": self.alpha,
+            "detection_efficiency": self.detection_efficiency,
+            "nu_bar": self.nu_bar,
+            "nu_pmf": self.nu_pmf,
+            "source_rate_cps": self.source_rate_cps,
+        }
+        missing = [
+            name
+            for name, parameter in required.items()
+            if parameter is None or parameter.value is None
+        ]
+        if missing:
+            raise ValueError(f"correlated source_model requires values for {', '.join(missing)}")
+
+        k_eff = self.resolved_k_eff()
+        if not 0.0 < k_eff < 1.0:
+            raise ValueError("correlated source_model requires 0 < k_eff < 1")
+        if self.reactivity is not None and self.reactivity.value is not None:
+            if not self.reactivity.value < 0.0:
+                raise ValueError("pure-prompt subcritical reactivity must be negative")
+
+        assert self.alpha is not None and self.alpha.value is not None
+        assert self.detection_efficiency is not None
+        assert self.detection_efficiency.value is not None
+        assert self.nu_bar is not None and self.nu_bar.value is not None
+        assert self.nu_pmf is not None and self.nu_pmf.value is not None
+        assert self.source_rate_cps is not None and self.source_rate_cps.value is not None
+        if self.alpha.value <= 0.0:
+            raise ValueError("source_model alpha must be positive")
+        if not 0.0 < self.detection_efficiency.value < 1.0:
+            raise ValueError("detection_efficiency must be within (0, 1)")
+        if self.nu_bar.value <= 0.0:
+            raise ValueError("nu_bar must be positive")
+        if not MIN_TRUE_RATE_CPS <= self.source_rate_cps.value <= MAX_TRUE_RATE_CPS:
+            raise ValueError("source_rate_cps must be within [10, 1e7]")
+
+        probabilities = self.nu_pmf.value
+        if not probabilities:
+            raise ValueError("nu_pmf must contain at least one probability")
+        if any(probability < 0.0 for probability in probabilities):
+            raise ValueError("nu_pmf probabilities must be non-negative")
+        if not math.isclose(sum(probabilities), 1.0, rel_tol=0.0, abs_tol=1.0e-9):
+            raise ValueError("nu_pmf probabilities must sum to one")
+        pmf_mean = sum(
+            multiplicity * probability for multiplicity, probability in enumerate(probabilities)
+        )
+        if not math.isclose(pmf_mean, self.nu_bar.value, rel_tol=1.0e-9, abs_tol=1.0e-12):
+            raise ValueError("nu_bar must match the mean of nu_pmf")
+
+        lambda_t = self.alpha.value / (1.0 - k_eff)
+        lambda_f = k_eff * lambda_t / self.nu_bar.value
+        lambda_d = self.detection_efficiency.value * lambda_t
+        lambda_c = lambda_t - lambda_f - lambda_d
+        if lambda_c < -1.0e-12 * lambda_t:
+            raise ValueError("source_model requires k_eff/nu_bar + detection_efficiency <= 1")
+        return self
+
+
 class ObservationMode(StrEnum):
     """Method used to define the virtual observation horizon."""
 
@@ -465,6 +586,7 @@ class He3SimConfig(ConfigModel):
     schema_version: str = "1"
     metadata: RunMetadataConfig
     simulation: SimulationDomainConfig
+    source_model: SourceModelConfig = Field(default_factory=SourceModelConfig)
     observation: ObservationWindowConfig
     spectrum: EnergySpectrumConfig
     amplitude: AmplitudeCalibrationConfig
@@ -476,6 +598,19 @@ class He3SimConfig(ConfigModel):
     trigger: TriggerConfig
     dead_time: DeadTimeConfig
     dataset: DatasetConfig
+
+    @model_validator(mode="after")
+    def validate_correlated_detected_rate(self) -> He3SimConfig:
+        """Keep the existing truth-rate contract aligned with branching inputs."""
+        if self.source_model.kind is not SourceModelKind.CORRELATED:
+            return self
+        configured_rate = self.simulation.true_rate_cps.value
+        if configured_rate is None:
+            return self
+        derived_rate = self.source_model.expected_detected_rate_cps()
+        if not math.isclose(configured_rate, derived_rate, rel_tol=1.0e-9, abs_tol=1.0e-12):
+            raise ValueError("simulation.true_rate_cps must equal source_model S*epsilon/(1-k_eff)")
+        return self
 
 
 def load_config(path: str | Path) -> He3SimConfig:

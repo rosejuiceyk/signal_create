@@ -36,3 +36,28 @@ def test_cli_accepts_windows_style_path_object() -> None:
     result = RUNNER.invoke(app, ["validate-config", "--config", str(config_path.resolve())])
 
     assert result.exit_code == 0, result.output
+
+
+def test_validate_correlated_writes_phase_a_static_report(tmp_path: Path) -> None:
+    config_path = PROJECT_ROOT / "configs" / "demo_minimal.yaml"
+    output_path = tmp_path / "phaseA_report"
+
+    result = RUNNER.invoke(
+        app,
+        [
+            "validate-correlated",
+            "--config",
+            str(config_path),
+            "--output",
+            str(output_path),
+            "--validation-events",
+            "2000",
+            "--rate-sweep-events",
+            "2000",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "figures: 6 PNG" in result.output
+    assert "result: passed" in result.output
+    assert (output_path / "phase_a_validation.html").is_file()

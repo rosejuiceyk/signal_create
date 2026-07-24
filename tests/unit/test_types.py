@@ -8,6 +8,7 @@ import pytest
 
 from he3sim.config import ParameterStatus
 from he3sim.types import (
+    EVENT_LINEAGE_DTYPE,
     OBSERVED_EVENT_DTYPE,
     TRUE_EVENT_DTYPE,
     CalibrationMetadata,
@@ -57,6 +58,7 @@ def test_structured_dtypes_include_required_fields() -> None:
     assert "trigger_time_s" in OBSERVED_EVENT_DTYPE.names
     assert "rise_time_10_90_s" in OBSERVED_EVENT_DTYPE.names
     assert "is_saturated" in OBSERVED_EVENT_DTYPE.names
+    assert EVENT_LINEAGE_DTYPE.names == ("event_id", "chain_id", "generation")
 
 
 def test_calibration_metadata_freezes_units_mapping() -> None:

@@ -1,3 +1,4 @@
+
 # he3-pulse-sim 分阶段人工审核指南
 
 ## 1. 文档用途
@@ -23,10 +24,14 @@
 | 1 | 泊松到达、参数化 He-3 能谱、幅值和真值事件 HDF5 | 已通过 | 已通过（2026-07-13） |
 | 2 | 双指数脉冲、连续波形、分块状态、噪声、裁剪和 ADC | 已通过 | 已通过（2026-07-13） |
 | 3 | 触发、死时间、多尺度流式 HDF5 数据集和计数率扫描 | 已通过 | 已通过（2026-07-13） |
-| 3.5 | 本地 Web 参数输入、连续波形、采样信息和图片 | 已通过 | 等待审核 |
-| 4 | 示波器标定 | 用户推迟 | 等待实测数据 |
-| 5 | 条件标记事件网络 A（experimental） | 已通过 | 已通过（2026-07-14） |
-| 6 | 尚未实现 | 不适用 | 不适用 |
+| 3.5 | 本地 Web 路线 | 已归档 | 不再审核 |
+| 4 | 示波器标定 | deferred | 等待实测数据 |
+| 4Q | 数据资格与采样轴确认 | 核心实现通过 | 等待人工审核；科学出口仍 blocked |
+| 5 | 条件标记事件网络 A | 已归档 | 不再审核 |
+| 6/6S | 残差网络路线 | 已归档 | 不再审核 |
+| A | 纯瞬发相关事件、lineage 与静态验证图 | 已通过 | 已通过（2026-07-19） |
+| B | 脉冲模式噪声分析、三法 α 复原与死时间偏置 | 已通过 | 已通过（2026-07-20） |
+| C | 连续信号 ACF/VTM/去卷积/CCF 与可用边界 | 已通过 | 等待人工审核 |
 
 ## 3. 环境与通用约定
 
@@ -397,6 +402,7 @@ he3sim simulate-waveform `
 `direct_sparse` 是逐事件参考实现，较大配置下可能明显慢于递推后端；它主要用于正确性审核，不是默认
 大规模渲染路径。
 
+
 运行 Phase 2 指定测试和完整集成测试：
 
 ```powershell
@@ -634,309 +640,309 @@ dataset.h5
 | 结论 | 通过 |
 | 问题与备注 | 用户明确要求只更新审核记录，不自动进入下一阶段 |
 
-## 8. Phase 3.5 人工审核：本地 Web 波形生成界面
+## 8. 已归档阶段记录
 
-### 8.1 审核目标
+Phase 3.5 Web、Phase 5 网络 A、Phase 6 网络 C 与 Phase 6S 的完整历史审核记录已随代码移入
+`archive/`。这些路线不再提供活动命令、依赖或人工审核入口。
 
-确认用户可以在本机浏览器填写真实计数率、采样率、观察时间和随机种子，生成连续波形 HDF5、
-两列 CSV、采样信息 JSON、实际配置 YAML 和波形 PNG；同时确认资源超限会在生成前被拒绝。
-参数状态不在页面顶部重复提示，但仍保存在各类元数据中。
+## 9. Phase 4Q 人工审核：数据资格与采样轴确认
 
-### 8.2 启动步骤
+### 9.1 审核目标
 
-在项目根目录和 `signal_create` 环境中运行：
+确认软件只读扫描 DT5790 `run3_X` 导出，为原始文件计算 SHA-256，明确区分
+RAW/FILTERED/UNFILTERED，对抽样事件执行四态 QC，并如实报告采样轴和独立 run 不足。Phase 4Q 不做
+去重、时间换算、能量标定、双指数拟合或网络训练。
 
-```powershell
-he3sim web
-```
+### 9.2 运行命令
 
-默认地址为：
-
-```text
-http://127.0.0.1:8501
-```
-
-命令只监听本机回环地址，不向局域网或互联网提供服务。如果不希望命令主动打开浏览器，可执行：
+在内层项目根目录逐行运行：
 
 ```powershell
-he3sim web --headless
+conda run -n signal_create python -m he3sim qualify-acquisition --input "C:\Users\rosejuice\Desktop\7.9-data\4\DAQ" --profile configs/acquisition_profiles/dt5790_run3.yaml -o outputs/phase04q
+conda run -n signal_create python -m pytest -q tests/calibration/test_phase4q.py
 ```
 
-若 8501 端口已被占用，可指定另一个本机端口：
+默认每个 run 最多处理256条事件记录，但会哈希全部发现的源文件。完整流式事件普查只能在明确接受
+长时间运行时增加 `--max-events-per-run 0`；有限扫描必须在报告中写为不完整，不得冒充全量 QC。
 
-```powershell
-he3sim web --port 8502
-```
-
-停止服务时，在运行命令的终端中按 `Ctrl+C`。
-
-### 8.3 页面操作
-
-页面提供四个可编辑输入：
-
-| 输入 | 单位 | 允许范围 | 含义 |
-|---|---:|---:|---|
-| 真实计数率 | cps | `10～1e7` | 死时间之前的齐次泊松真实到达率 |
-| 采样率 | MS/s | `100～250` | 连续波形离散采样网格 |
-| 观察时间 | ms | 正数且受资源上限约束 | 本次固定连续波形时长 |
-| 随机种子 | 无 | 非负整数 | 事件、能谱、幅值和噪声复现入口 |
-
-填写数值后，页面会在生成前显示：预期事件数、实际将分配的采样点数、采样间隔，以及按每点
-两个 `float32` 模拟电压、`uint16` ADC 和 `bool` 饱和标记估算的 11 bytes 原始数组大小。该数值不是
-HDF5 压缩后文件大小，也不是完整峰值内存承诺。
-
-观察时间输入框下方会直接显示当前最大值。软件分别计算：
-
-- 采样点上限允许的最大时间；
-- 当前计数率下，预期事件数上限允许的最大时间；
-- 两者的较小值作为输入框最大值。
-
-改变计数率或采样率后，该提示和输入上限会自动刷新；若原观察时间超过新上限，页面会先将其
-收紧到新上限，再执行资源预检。
-
-本地网页单次最多生成 5000000 个采样点。采样点数量按下式确定：
+### 9.3 产物与预期结果
 
 ```text
-sample_count = ceil(duration_s × sample_rate_hz) + 1
+outputs/phase04q/
+├── provenance.json
+├── file_manifest.csv
+├── run_manifest.csv
+├── event_qc.jsonl
+├── qc_summary.csv
+├── sampling_axis_report.json
+├── sampling_axis_report.md
+├── split_feasibility.json
+└── data_gap_report.md
 ```
 
-末尾的 `+1` 表示时间网格包含零时刻。因此，截图中 5000001 点来自约 5000000 个采样间隔加上
-零时刻。该上限用于防止交互任务产生过大的内存、CSV 和绘图文件，不是探测器、前放或采集设备的
-物理限制。在 `100 MS/s` 下观察时间需小于约 `50 ms`，在 `250 MS/s` 下需小于约 `20 ms`；
-页面会随采样率显示当前建议上限。
+预期结果：15个 run 被清点，11个含事件记录、4个为空；每个源文件具有大小、修改时间和 SHA-256；
+`sample_interval_s` 保持 `null`；粒子标签状态为 `unknown`；严格相邻重复样本被标记但未删除；
+`split_feasible=false`；最终科学状态为 `blocked`。
 
-点击“生成连续波形”后，等待页面显示“连续波形生成完成”。页面会显示实际真值事件数、渲染后端、
-三面板 PNG、前 12 个实际采样点，以及完整采样/产物 JSON。PNG、JSON 和小于 50 MiB 的 CSV
-可从页面下载；完整逐点数组同时保存在本机 HDF5。大型 CSV 仍保存到运行目录，但不送入浏览器内存。
+### 9.4 人工审核清单
 
-波形 PNG 优先显示裁剪前连续电压，纵轴按当前可见数据自动缩放并留出边距。高计数率时，细节窗口最多绘制 80 条
-代表性真值事件竖线和 500 个代表性饱和点，同时显示附近事件总数、绘制标记数和饱和样本比例。
-这能避免事件标记把曲线涂黑。HDF5 另存裁剪后电压并用它生成 ADC；若 ADC 饱和比例接近 100%，
-表示当前演示配置量程不足，但裁剪前面板仍可显示连续堆积形态。
+- [ ] 原始目录内没有新增、删除或修改文件；
+- [ ] `file_manifest.csv` 覆盖 info、XML 和三种波形版本；
+- [ ] RAW 是主 QC 来源，其他版本没有静默替代；
+- [ ] QC 同时支持 `pass/fail/not_evaluable/unknown`；
+- [ ] 缺少 ADC 轨道时 saturation 为 `not_evaluable`；
+- [ ] 重复样本只统计，没有自动去重；
+- [ ] 采样轴确认前没有秒制时间常数、频谱轴或积分电荷；
+- [ ] `ENERGY` 没有被解释为已验证 keV；
+- [ ] 软件 neutron/gamma 标签没有被当作外部真值；
+- [ ] 同一 run 的三种版本不会跨 train/validation/test；
+- [ ] 当前每计数率只有一个 run，因此明确保持 blocked；
+- [ ] `he3sim --help` 不包含网络 A 命令；
+- [ ] 未进入 Phase 4C、4V 或 Phase 6。
 
-### 8.4 产物目录和采样点定义
-
-每次生成都会创建独立目录：
-
-```text
-outputs/web_runs/web-<UTC时间>-<随机后缀>/
-├── run_config.yaml
-├── waveform.h5
-├── waveform.csv
-├── waveform.png
-└── sampling_info.json
-```
-
-`waveform.h5` 中：
-
-- `/blocks/analog_samples`：软件量程裁剪后的完整模拟电压采样点，单位 V，类型 `float32`；
-- `/blocks/preclip_analog_samples`：软件裁剪之前的完整模拟电压，单位 V，类型 `float32`；
-- `/blocks/adc_samples`：完整 ADC 码，类型 `uint16`；
-- `/blocks/saturation_mask`：每个采样点的饱和标记；
-- `/events/true`：所有参与波形叠加的真值事件；
-- 第 `i` 个采样点的时间为 `t_s = i / sample_rate_hz`。
-
-`waveform.csv` 使用 UTF-8 文本，严格包含两列：
-
-```text
-time_s,voltage_V
-0,0.000123...
-...
-```
-
-- `time_s`：采样点时间，单位秒；
-- `voltage_V`：对应的模拟电压，单位伏，与 HDF5 `/blocks/analog_samples` 逐点一致；
-- CSV 以 65536 点为一块从 HDF5 写出，不会为了导出而一次性加载整段波形。
-
-`sampling_info.json` 保存输入、采样间隔、采样点数、预期/实际事件数、HDF5 数据集路径、seed、
-配置哈希、参数状态、渲染器和产物大小。`run_config.yaml` 是本次实际运行配置；原始
-`configs/demo_minimal.yaml` 不会被修改。
-
-### 8.5 当前自动验收演示
-
-本次自动验收生成了一个小型人工复核样例：
-
-```text
-outputs/manual_review/phase03_5/web-20260713T141226.728734Z-11eba945/
-```
-
-其输入为 `100000 cps`、`100 MS/s`、`0.1 ms` 和 seed `20260711`；生成 10001 个采样点、
-10 个实际真值事件，使用 `recursive_fixed_tau`，并包含 334445 bytes 的两列 CSV。参数状态仍在
-元数据中记录为 `synthetic_demo`；该样例只验证软件链路，不代表真实设备输出。
-
-高计数率绘图复核样例：
-
-```text
-outputs/manual_review/phase03_5/preclip_high_rate/web-20260713T161050.699272Z-acbd6468/
-```
-
-其输入与用户截图一致：`1e7 cps`、`100 MS/s`、`15 ms`、seed `20260303`。实际生成 149843 个
-真值事件和 1500001 个采样点。事件中心窗口包含 876 个事件，但只绘制 80 条代表性事件线；
-饱和比例为 100%，但裁剪前波形仍显示约 `7～10 V` 的连续堆积变化；裁剪后电压和 ADC 保持饱和。
-
-### 8.6 人工审核清单
-
-- [ ] `he3sim web` 启动成功，浏览器可打开 `http://127.0.0.1:8501`；
-- [ ] 页面顶部不再显示 `synthetic_demo` 警告条，结果区不再显示“参数状态”卡片；
-- [ ] 三个工况参数和 seed 可编辑，单位清晰；
-- [ ] 四个输入框附近均显示允许范围，观察时间范围会随当前工况更新；
-- [ ] 生成前资源预估随输入变化，过大任务会被拒绝并给出缩短建议；
-- [ ] 观察时间输入框旁显示当前最大值，改变计数率或采样率后自动更新；
-- [ ] 点击生成后出现三面板波形图片，而不只是 HDF5 结构；
-- [ ] 高计数率图的纵轴有可见留白，密集事件标记不会覆盖整张细节图；
-- [ ] 新生成的高计数率 HDF5 含 `/blocks/preclip_analog_samples`，PNG 前两个面板可见裁剪前波形变化；
-- [ ] 饱和波形明确显示饱和比例，不把裁剪压平误认为绘图失败；
-- [ ] 页面显示实际真值事件数和前 12 个采样点；
-- [ ] HDF5 的采样点数与 `sampling_info.json` 一致；
-- [ ] `waveform.csv` 只有 `time_s,voltage_V` 两列，行数与 HDF5 采样点数一致；
-- [ ] CSV 时间严格递增，电压与 HDF5 `/blocks/analog_samples` 对应；
-- [ ] `run_config.yaml` 记录本次输入，基础演示配置未被覆盖；
-- [ ] 重复使用相同输入和 seed 时，真值事件和波形数组一致；
-- [ ] 页面只监听本机，没有示波器标定、硬件控制或神经网络功能。
-
-### 8.7 已知限制和未实现内容
-
-- Web 单次任务最多 5000000 个采样点、1000000 个预期事件；这是交互模式安全门限，
-  不是 Phase 3 流式数据集能力的上限；
-- 页面暂不编辑能谱、增益、时间常数、噪声、ADC、触发和死时间参数；这些值来自基础配置；
-- 完整 HDF5 只保存在本机；CSV 超过 50 MiB 时也只保存在本机，避免浏览器内存膨胀；
-- 页面没有任务队列、并发隔离、账号、权限、数据库、远程部署或云端托管；
-- 未实现 Phase 4 示波器导入、拟合或真实参数标定；Phase 5 网络 A 仅为独立 experimental
-  研究工具且未接入本页面，Phase 6 未实现；
-- 未实现 DT5800/DT5790 控制、实时采集或波形下发。
-
-### 8.8 审核记录
-
-| 项目 | 填写内容 |
-|---|---|
-| 审核人 | 用户（本线程明确确认） |
-| 审核时间（含时区） | 2026-07-14（Asia/Shanghai） |
-| 样例目录 | `outputs/manual_review/phase03_5/web-20260713T141226.728734Z-11eba945/` |
-| 高计数率样例 | `outputs/manual_review/phase03_5/preclip_high_rate/web-20260713T161050.699272Z-acbd6468/` |
-| 配置哈希 | `41136b5d4ccd94adf114a4d9113a3270eeca18fbf1c31e26df994536ddd49416` |
-| 高计数率配置哈希 | `1444759b4199b77f8ed43c1ee5b553214487db5d0a98a94aae9e6e9c75e415c0` |
-| 结论 | 等待人工审核 |
-| 问题与备注 | 自动验收通过后停止；Phase 4 保持阻塞 |
-
-## 9. Phase 5 人工审核：条件标记事件网络 A
-
-### 9.1 审核目标和边界
-
-确认网络 A 能以计数率、窗口时长、配置编码和随机潜变量为条件，生成可变长度、时间严格递增、
-marks 合法的事件表；训练使用似然而不是 MSE，并能在 CPU/CUDA 上运行、保存断点和输出严格比较。
-
-本阶段由用户明确授权推迟 Phase 4 后执行，因此所有训练目标仍来自 `synthetic_demo` 精确物理生成器。
-网络只作研究对照，状态必须为 `experimental`，不得进入默认事件、波形或 Web 生成链。
-
-### 9.2 环境与命令
-
-截图中的 PowerShell 提示符位于外层目录 `...\he-3-signal`。必须先进入包含 `pyproject.toml`、
-`configs` 和 `tests` 的内层项目根目录。以下命令逐行执行；如果提示符已经位于
-`...\he-3-signal\he3_codex_context`，则跳过 `Set-Location`。使用 `conda run -n signal_create`
-强制每条命令在统一环境中运行，因此即使提示符仍显示 `(base)` 也不会误用 base 环境：
-
-```powershell
-Set-Location .\he3_codex_context
-if (-not (Test-Path .\pyproject.toml)) { throw "当前目录不是 he3_codex_context 项目根目录" }
-conda run -n signal_create python -c "import sys; print(sys.executable)"
-conda run -n signal_create python -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
-```
-
-第一条 Python 输出的路径必须包含 `envs\signal_create`，不能指向 `D:\anaconda\python.exe`。
-当前自动验收环境的第二条命令应显示 `2.12.1+cu130`、`True` 和
-`NVIDIA GeForce RTX 5060 Laptop GPU`。
-
-随后逐行运行下列三条独立命令。统一使用环境内的 `python -m he3sim`，
-不使用可能仍指向 base 环境的全局 `he3sim.exe`，也不使用容易误粘连命令的 PowerShell 反引号：
-
-```powershell
-conda run -n signal_create python -m he3sim train-event-model -c configs/ml_event.yaml
-conda run -n signal_create python -m he3sim compare-event-model -c configs/ml_event_eval.yaml -o outputs/phase05_comparison
-conda run -n signal_create python -m pytest -q tests/ml/test_event_model_smoke.py
-```
-
-若仍提示 `Phase 5 requires the optional 'ml' dependencies`，先确认第一条预检输出的 Python 路径包含
-`envs\signal_create`。本项目当前环境已经安装 ML 依赖，无需为了本次审核重新下载；只有新建环境时才需要
-在内层项目根目录执行 `conda run -n signal_create python -m pip install -e ".[ml]"`。
-
-要强制 CPU 或 CUDA，可把对应 YAML 中 `device` 改为 `cpu` 或 `cuda`。显式请求不可用 CUDA
-必须报错，不能静默切换 CPU；`auto` 才会自动选择可用设备。
-
-### 9.3 训练产物
-
-```text
-outputs/phase05_training/
-├── checkpoint_epoch_0005.pt
-├── checkpoint_epoch_0010.pt
-├── checkpoint_epoch_0015.pt
-├── checkpoint_epoch_0020.pt
-├── checkpoint_latest.pt
-├── MODEL_CARD.md
-├── training_config.json
-└── training_summary.json
-```
-
-checkpoint 包含网络权重、优化器状态、epoch、训练历史、架构、配置编码、基础/训练配置哈希和
-`experimental` 状态。当前模型为 15705 个参数，CUDA 训练 20 epoch；训练配置哈希为
-`ecaf407acc861a26e38833112a130637320d8181877a42ad6f13de4ebb51dedc`。
-
-### 9.4 统计和速度比较
-
-```text
-outputs/phase05_comparison/
-├── phase05_comparison.md
-├── phase05_comparison.json
-└── phase05_rate_metrics.csv
-```
-
-当前比较对 13 个标准计数率和 12 个几何中点分别运行 256 个独立窗口。结果为 25/25 工况通过
-研究级统计门槛、0 个非法事件。最坏指标为：计数率相对偏差约 2.43%、Fano 误差约 0.224、
-间隔 KS 约 0.0204、间隔一阶自相关绝对值约 0.0235、类型 TV 约 0.0266、能量分位误差约
-0.0147、幅值分位误差约 0.0383、时间常数相对分位误差约 0.0560、能量-幅值相关误差约 0.0385。
-
-本次人工审核命令复验中，CUDA 比较的精确基线约为 53268 events/s，网络约为 3787 events/s，
-网络/基线速度比约 0.071。
-训练峰值 CUDA 分配约 68.13 MiB，比较峰值约 32.34 MiB，远低于 8 GB，但网络没有速度优势，
-所以即使统计匹配仍保持 `experimental`。评价配置哈希为
-`8494c11ca183cb1485558eb86a884ec973794c97829a03f107c764332ed7755d`。
-
-### 9.5 人工审核清单
-
-- [ ] `train-event-model` 输出 checkpoint、模型卡和训练摘要；
-- [ ] 模型卡明确写有 `experimental` 和 exact physical default；
-- [ ] 相同 checkpoint、条件和 seed 生成完全相同的事件表；
-- [ ] 事件数可变，时间严格递增且全部位于窗口内；
-- [ ] 能量非负、幅值为正、类型合法，且 `tau_d > tau_r > 0`；
-- [ ] 训练代码对 count、interval、type、energy、amplitude 和 tau 全部使用似然；
-- [ ] checkpoint 可恢复到下一 epoch，且基础配置哈希不一致时拒绝恢复；
-- [ ] CPU smoke test 和 RTX 5060 CUDA 训练/推理均可运行；
-- [ ] 比较覆盖 13 个标准率和 12 个插值率，报告非法输出、统计、速度、内存和显存；
-- [ ] 报告显示网络没有速度优势，并保持 `promotion_recommended=false`；
-- [ ] 现有 `simulate-events`、Web 和数据集路径仍使用精确物理生成器；
-- [ ] 未实现 Phase 6 波形残差网络。
-
-### 9.6 已知限制
-
-- 训练数据全部来自单个 `synthetic_demo` 配置，不是实测探测器总体；
-- Poisson 计数和指数间隔本来就有精确采样器，网络在当前任务上更慢；
-- GPU 比较按单窗口推理，尚未为大批量吞吐做专门优化；
-- 未经 Phase 4 标定，不能评价真实能谱、增益或时间常数的外推；
-- 统计门槛通过仅表示复现当前合成分布，不代表网络优于物理模型。
-
-### 9.7 审核记录
+### 9.5 审核记录
 
 | 项目 | 填写内容 |
 |---|---|
 | 审核人 | 待用户填写 |
 | 审核时间（含时区） | 待填写 |
-| checkpoint | `outputs/phase05_training/checkpoint_latest.pt` |
-| 比较报告 | `outputs/phase05_comparison/phase05_comparison.md` |
-| 模型状态 | `experimental` |
-| 默认生成器 | `exact_poisson_parametric_spectrum` |
-| 结论 | 通过 |
-| 问题与备注 | 用户确认命令修复后的 Phase 5 审核通过；网络仍为 experimental，不自动替代精确物理基线 |
+| 产物目录 | `outputs/phase04q/` |
+| 自动验收 | 已通过 |
+| 科学出口 | `blocked` |
+| 结论 | 等待人工审核 |
+| 阻塞原因 | 采样轴未确认；每计数率独立 run 不足；当前审查为每 run 最多256条事件 |
 
-## 10. 如何提交人工审核结论
+
+
+## 10. Phase A 人工审核：纯瞬发相关中子事件
+
+### 10.1 审核目标
+
+确认泊松仍是默认基线；相关模式能产生可复现、严格有序的探测时刻；裂变链标签通过独立旁表保存，
+不占用 `pileup_group_id`；相关事件能够继续通过现有波形、ADC、触发、死时间和数据集流水线。
+
+本阶段采用用户确认的“源开启窗口”：只在观察窗内生成外源中子，不预置稳态中子布居。因此窗口开头
+存在约 `1/alpha` 的启动暂态；一阶解析率验收使用远长于该时间尺度的观察窗。
+
+### 10.2 操作步骤
+
+生成默认泊松事件：
+
+```powershell
+he3sim simulate-events -c configs/demo_minimal.yaml -o outputs/manual_review/phaseA/poisson.h5
+```
+
+使用同一演示配置内的相关参数预设生成纯瞬发相关事件：
+
+```powershell
+he3sim simulate-events --source-model correlated -c configs/demo_minimal.yaml -o outputs/manual_review/phaseA/correlated.h5
+he3sim inspect outputs/manual_review/phaseA/correlated.h5
+```
+
+生成本阶段静态验收报告：
+
+```powershell
+he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report
+```
+
+浏览器打开 `outputs/phaseA_report/phase_a_validation.html`，并可逐张查看同目录六个 PNG。报告必须
+可以离线打开，不依赖 JavaScript；`phase_a_validation.json` 保存与图面标注相同的门禁指标。
+
+执行专项与全量验收：
+
+```powershell
+python -m pytest -q tests/unit/test_source_model.py tests/unit/test_chains.py tests/unit/test_phase_a_visualization.py
+python -m pytest -q tests/integration/test_phase1.py tests/integration/test_phase3.py
+python -m ruff format --check .
+python -m ruff check .
+python -m mypy src
+python -m pytest -q
+```
+
+### 10.3 预期结果和数据契约
+
+- 默认命令输出 `source_model: poisson`；显式覆盖输出 `source_model: correlated`；
+- 两次使用相同 seed 的相关模拟产生完全相同的真值与 lineage；
+- `events/true` 的 dtype 与 Phase 1–3 完全相同；
+- 相关 HDF5 额外包含 `events/lineage`，字段为 `event_id/chain_id/generation`；
+- `metadata/source_model` 为 `correlated`，`source_model_derived_json` 保存派生物理量；
+- `pileup_group_id` 仍由波形流式层按脉冲重叠关系计算，不解释为裂变链编号。
+- 静态报告包含同率 raster、log-y 间隔分布、Fano-门宽、平均率-`k_eff`、真实链树和退化极限；
+- 图面关键量来自 JSON/验证层预计算结果，图函数只渲染并返回 `matplotlib.figure.Figure`；
+- 报告没有交互仪表盘，也没有恢复已归档 Web 路线。
+
+### 10.4 人工审核清单
+
+- [x] 泊松默认路径和旧命令保持可用；
+- [x] 相关 CLI 成功生成带 lineage 的 HDF5；
+- [x] 同 seed 输出可复现，时刻严格递增且位于观察窗内；
+- [x] `TRUE_EVENT_DTYPE` 未改变，lineage 与 `event_id` 一一对齐；
+- [x] 派生探测率为 `S*epsilon/(1-k_eff)`，配置不一致时明确拒绝；
+- [x] 全量 160 项测试、Ruff 和 mypy 均通过；
+- [x] 所有演示参数仍标记 `synthetic_demo`；
+- [x] 未实现延迟中子、近临界 Gillespie、Phase B 噪声分析、DT5800 或硬件控制。
+- [x] 六张 PNG 均可读，图例、坐标、`α` 与差异指标标注清晰且无遮挡；
+- [x] 离线 HTML 的技术摘要、图面结论和 `phase_a_validation.json` 数值一致；
+- [x] 未实现交互仪表盘，报告仅为静态 PNG/HTML 薄层。
+
+### 10.5 审核记录
+
+| 项目 | 填写内容 |
+|---|---|
+| 审核人 | 用户（本线程确认） |
+| 审核时间（含时区） | 2026-07-19（Asia/Shanghai） |
+| 自动验收 | 155 项测试通过；Ruff/mypy 通过 |
+| 物理窗口约定 | 源开启窗口；无预热历史 |
+| 结论 | 通过 |
+| 问题与备注 | Phase B 未开始；必须等待单独授权 |
+
+### 10.6 静态可视化增量审核记录
+
+| 项目 | 填写内容 |
+|---|---|
+| 自动验收时间（含时区） | 2026-07-19（Asia/Shanghai） |
+| 自动验收 | 160 项测试通过；Ruff/mypy 通过；正式 CLI 报告门禁通过 |
+| 正式产物 | `outputs/phaseA_report/`：6 PNG + HTML + JSON |
+| 审核人 | 用户（本线程确认） |
+| 人工审核时间（含时区） | 2026-07-19（Asia/Shanghai） |
+| 结论 | 通过 |
+| 问题与备注 | 原核心生成器审核记录保留；Phase B 仍须单独授权 |
+
+### 10.7 Phase B 脉冲模式噪声分析与人工审核
+
+Phase B 使用 Phase A 相关事件的理想探测时刻作为触发候选，分别执行 Rossi-α、Feynman-α 和
+PSD 拟合，并用固定 seed 闭合“设定 α → 反演 α → 与真值比较”。全部演示参数仍为
+`synthetic_demo`，不能解释为真实探测器或反应堆结果。
+
+从仓库内层根目录运行：
+
+```powershell
+conda activate signal_create
+he3sim analyze-noise -c configs/demo_minimal.yaml -o outputs/phaseB_noise
+he3sim validate-alpha-recovery -c configs/demo_minimal.yaml -o outputs/phaseB_recovery
+```
+
+第一条命令生成单工况三张拟合图、`phase_b_noise.html` 和 `phase_b_noise.json`。第二条是正式阶段
+门禁，生成以下七张中文普通说明静态图：
+
+1. Rossi-α 时间差直方图与指数拟合；
+2. Feynman-α `Y(T)` 曲线与单指数拟合；
+3. PSD 与洛伦兹拟合、拐点 `α/2π`；
+4. 三方法 α 复原 parity 图；
+5. 三方法相对误差并排图；
+6. Hazama 一阶 VTM 修正前后的死时间偏置与可用边界；
+7. 时间块 bootstrap α 分布与朴素误差对比。
+
+报告中的 α 单位为 `s^-1`，计数率单位为 `cps`，时间为秒或毫秒，频率为 `Hz`。图片里普通标题、
+坐标说明和解释尽量使用中文；Rossi-α、Feynman-α、PSD、VTM、Y∞ 等专业名词保留。
+
+正式自动验收结果：三组 `(alpha, epsilon, 计数率)` 的最大 α 相对误差为 `3.94%`，三方法最大
+差异为 `2.37%`；时间块 bootstrap 的报告误差比朴素独立-bin 拟合更保守。`4 us` 非延长型
+synthetic_demo 死时间的 `2 × 4` 网格中，Hazama 一阶修正使至少 75% 工况的偏置减小，共同
+`5%` 连续可用上限约为 `10000 cps`。
+
+人工审核清单：
+
+- 打开 `outputs/phaseB_recovery/phase_b_validation.html`，确认结果显示“通过”；
+- 查看 parity 图的九个点是否均落在 ±5% 灰带内，误差棒是否可见；
+- 查看 Rossi、Feynman 和 PSD 拟合是否贴合数据，且 α、Y∞、A/B 或拐点标注清楚；
+- 查看死时间图中修正后曲线是否比修正前更接近 1，并确认高率失效区没有被写成可用；
+- 查看 bootstrap 图是否同时显示朴素误差和相关性修正误差；
+- 确认七张图的普通说明为中文，且没有遮挡、乱码或裁切。
+
+已知限制：Hazama 实现是非延长型死时间的弱损失一阶 VTM lift，超过已报告可用边界后不保证
+无偏；没有连续信号 ACF/VTM、去卷积、双探测器 CCF、DT5800 HIL、缓发平台、反应堆数据或
+交互仪表盘。自动验收通过后状态为 `awaiting_human_review`，必须等待用户结论。
+
+| 项目 | 填写内容 |
+|---|---|
+| 自动验收时间（含时区） | 2026-07-19（Asia/Shanghai） |
+| 自动验收 | 167 项测试、Ruff、mypy 通过；最大复原误差 3.94%；最大方法差异 2.37% |
+| 正式产物 | `outputs/phaseB_recovery/`：7 PNG + HTML + JSON |
+| 审核人 | 用户 |
+| 人工审核时间（含时区） | 2026-07-20（Asia/Shanghai） |
+| 结论 | 通过 |
+| 问题与备注 | Phase HIL 被跳过；Phase C 已授权 |
+
+### 10.8 Phase C 连续信号噪声分析与人工审核
+
+Phase C 对连续电压波形直接计算自协方差 ACF(θ)、方差均值比 VTM(T)、Wiener
+去卷积，以及双探测器互协方差 CCF/CTM。ACF/VTM 拟合含探测器脉冲衰减常数 α_e
+项的模型，去卷积扫描 γ–NSR 稳定域。可用边界在 3×4 的 (α, 率) 网格上评估。
+
+从仓库内层根目录运行：
+
+```powershell
+conda activate signal_create
+he3sim analyze-continuous-noise -c configs/demo_correlated.yaml -o outputs/phaseC_continuous
+he3sim scan-usability-frontier -c configs/demo_correlated.yaml -o outputs/phaseC_frontier
+```
+
+`analyze-continuous-noise` 生成 7 张静态图：
+
+1. 连续 ACF 及其含 α_e 项的双指数拟合；
+2. 连续 VTM 拟合；
+3. Wiener 去卷积原始/去卷积/阈值化三面板；
+4. γ–NSR 稳定域热力图；
+5. 双探测器 CCF/CTM 双子图；
+6. 可用边界 (α, 率) 相对误差热力图；
+7. 壁效应敏感性曲线。
+
+同时生成离线 `phase_c_validation.html` 和 `phase_c_validation.json`。
+所有普通说明使用中文，专业名词保留。
+
+已知限制：CCF/CTM 使用同一中子场数字孪生，未经过 DT5800 或真实电子学验证
+（Phase HIL 已跳过）。壁效应敏感性仍为 synthetic_demo 参数化谱。
+自动验收通过后状态为 `awaiting_human_review`，必须等待用户结论。
+
+| 项目 | 填写内容 |
+|---|---|
+| 自动验收时间（含时区） | 2026-07-20（Asia/Shanghai） |
+| 自动验收 | 196 项测试、Ruff、mypy 通过 |
+| 正式产物 | `outputs/phaseC_frontier/` 或 `outputs/phaseC_continuous/`：7 PNG + HTML + JSON |
+| 审核人 | 待用户填写 |
+| 人工审核时间（含时区） | 待填写 |
+| 结论 | `awaiting_human_review` |
+| 问题与备注 | Phase HIL 已跳过；不含交互仪表盘 |
+
+## 11. 本地交互界面可用性增量审核
+
+本次增量只修复界面交互，不改变物理模型、估计器或阶段科学结论。启动命令：
+
+```powershell
+conda activate signal_create
+streamlit run src/he3sim/ui/app.py --server.address 127.0.0.1
+```
+
+人工审核清单：
+
+- [ ] 选择相关源后，`k_eff`、探测效率等参数各只有一个数值输入框；
+- [ ] 输入框支持直接键入和加减按钮微调，没有上下两套控件互相覆盖；
+- [ ] 任一功能生成结果后，切换到另一功能再返回，原指标与图表仍然存在；
+- [ ] 不同功能页各自保留最近一次成功结果，互不覆盖；
+- [ ] 结果区不再显示 `synthetic_demo`、设备标定或浏览器会话保留页脚提示；
+- [ ] 侧栏不再显示“历史”分组或“历史结果浏览”入口。
+
+自动检查已通过，当前人工审核状态为 `awaiting_human_review`。结果仍只在当前浏览器会话和服务进程期间
+保留，但界面不再重复显示该提示；长期产物直接从 `outputs/` 查看。
+
+### 11.1 Windows 11 便携版审核
+
+审核产物：`dist/He3Signal-Win11-x64.zip`。
+
+- [ ] 在一台未安装 Python/Conda 的 Windows 11 64 位电脑上完整解压 ZIP；
+- [ ] 双击 `He3Signal.exe` 时不出现 PowerShell 或命令行窗口；
+- [ ] 默认浏览器自动打开，侧栏只有四个当前功能页；
+- [ ] 事件生成能够产生事件数、统计指标和图表；
+- [ ] 再次双击只打开现有界面，不启动第二个后台服务；
+- [ ] 恢复任务栏中的启动控制器并点击“退出软件”后，本地网页无法继续访问；
+- [ ] 软件目录自动创建 `outputs/`，启动失败时可从 `logs/launcher.log` 查看原因；
+- [ ] 复制整个文件夹后仍可运行，且没有单独复制 EXE 或删除 `_internal/`。
+
+本机自动验收已覆盖打包 EXE 启动、页面加载、一次事件生成、四页导航、重复启动和退出清理。目标电脑
+无 Python 环境的实际复制审核仍需用户完成；当前状态为 `awaiting_human_review`。
+
+## 12. 如何提交人工审核结论
 
 完成某一 Phase 的检查后，向 Codex 明确发送以下任一结论：
 
@@ -953,7 +959,7 @@ Phase X 人工审核不通过。问题如下：……。只修复这些问题并
 收到“人工审核通过”后，Codex 应更新本文档对应审核记录和 `docs/STATUS.md`。只有用户随后明确要求
 执行下一 Phase，才允许开始下一阶段。
 
-## 11. 后续 Phase 的手册更新要求
+## 13. 后续 Phase 的手册更新要求
 
 每个 Phase 自动验收完成后，必须在停止前更新本文档，至少补充：
 
@@ -969,7 +975,7 @@ Phase X 人工审核不通过。问题如下：……。只修复这些问题并
 若新阶段修改了旧功能，也必须同步更新旧章节。没有更新用户手册的 Phase 不得标记为等待人工审核，
 更不得进入下一阶段。
 
-## 12. 文档变更记录
+## 14. 文档变更记录
 
 | 日期 | 版本 | 内容 |
 |---|---|---|
@@ -985,3 +991,14 @@ Phase X 人工审核不通过。问题如下：……。只修复这些问题并
 | 2026-07-14 | 1.9 | 新增 Phase 5 网络 A 的似然模型、CPU/CUDA、统计比较、产物和人工审核指南 |
 | 2026-07-14 | 2.0 | 修复 Phase 5 审核命令的工作目录、Conda 环境、全局入口和 PowerShell 续行问题 |
 | 2026-07-14 | 2.1 | 记录 Phase 5 人工审核通过；Phase 6 因真实连续波形与多计数率 run 不足而仅做入口评估 |
+| 2026-07-14 | 2.2 | 退役网络 A；新增 Phase 4Q 只读数据资格、QC、采样轴和人工审核说明 |
+| 2026-07-15 | 2.3 | 新增Phase 6S人工干扰、事件保护TCN、CUDA预演、产物和人工审核说明 |
+| 2026-07-18 | 3.0 | 归档 Web/ML 路线，保留 Phase 0–3 与 Phase 4Q 审核入口，并切换至相关中子噪声路线图 |
+| 2026-07-18 | 3.1 | 新增 Phase A 纯瞬发相关事件、lineage 旁表、源开启窗口和人工审核步骤 |
+| 2026-07-19 | 3.2 | 记录 Phase A 人工审核通过；保持 Phase B 未授权 |
+| 2026-07-19 | 3.3 | 新增 Phase A 六图静态 PNG/HTML 报告及数据级测试；重新等待人工复核 |
+| 2026-07-19 | 3.4 | 记录 Phase A 可视化增量人工审核通过；保持 Phase B 未授权 |
+| 2026-07-19 | 3.5 | 新增 Phase B 三法 α 复原、bootstrap、死时间修正、七图报告与人工审核清单 |
+| 2026-07-23 | 3.6 | 恢复本机研究界面说明，增加单一参数输入、历史页修复与跨页结果保留审核清单 |
+| 2026-07-24 | 3.7 | 移除结果区重复提示和历史结果浏览入口，保留四个计算页及其跨页会话状态 |
+| 2026-07-24 | 3.8 | 新增 Win11 x64 免安装便携版、无控制台启动器、构建脚本与跨机器人工审核清单 |

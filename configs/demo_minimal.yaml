@@ -17,6 +17,34 @@ simulation:
     value: 250000000.0
     status: synthetic_demo
     notes: Demonstration value within the supported project range.
+source_model:
+  kind: poisson
+  k_eff:
+    value: 0.2
+    status: synthetic_demo
+    notes: Arbitrary subcritical demonstration value; not reactor data.
+  alpha:
+    value: 1000.0
+    status: synthetic_demo
+    notes: Arbitrary pure-prompt decay constant in inverse seconds.
+  detection_efficiency:
+    value: 0.1
+    status: synthetic_demo
+    notes: Arbitrary per-neutron detection probability.
+  nu_bar:
+    value: 2.5
+    status: synthetic_demo
+    notes: Demonstration multiplicity mean, not an evaluated nuclear-data value.
+  nu_pmf:
+    value: [0.0, 0.0, 0.5, 0.5]
+    status: synthetic_demo
+    notes: Arbitrary demonstration PMF with mean 2.5.
+  source_rate_cps:
+    value: 8000.0
+    status: synthetic_demo
+    notes: Chosen so S*epsilon/(1-k_eff) equals 1000 cps.
+  max_chain_generation: 128
+  max_total_reactions: 1000000
 observation:
   mode: fixed_duration
   duration_s:

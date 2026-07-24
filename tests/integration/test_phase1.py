@@ -8,7 +8,7 @@ import numpy as np
 from typer.testing import CliRunner
 
 from he3sim.cli import app
-from he3sim.config import He3SimConfig, config_hash, load_config
+from he3sim.config import He3SimConfig, SourceModelKind, config_hash, load_config
 from he3sim.io.hdf5 import read_true_events_hdf5, write_true_events_hdf5
 from he3sim.physics.arrivals import ArrivalAlgorithm
 from he3sim.physics.events import simulate_true_events
@@ -137,3 +137,58 @@ def test_phase1_cli_simulation_and_validation(tmp_path: Path) -> None:
     assert (validation_path / "arrival_validation.md").exists()
     assert (validation_path / "count_histogram.png").exists()
     assert (validation_path / "interval_cdf.png").exists()
+
+
+def test_correlated_truth_pipeline_persists_lineage_without_changing_truth_dtype(
+    tmp_path: Path,
+) -> None:
+    config = load_config(PROJECT_ROOT / "configs" / "demo_minimal.yaml")
+    raw = config.model_dump(mode="python")
+    raw["source_model"]["kind"] = SourceModelKind.CORRELATED.value
+    correlated = He3SimConfig.model_validate(raw)
+
+    left = simulate_true_events(correlated)
+    right = simulate_true_events(correlated)
+
+    np.testing.assert_array_equal(left.events, right.events)
+    assert left.source_model is SourceModelKind.CORRELATED
+    assert left.lineage is not None
+    assert left.lineage.shape == left.events.shape
+    np.testing.assert_array_equal(left.lineage["event_id"], left.events["event_id"])
+    assert np.all(left.events["pileup_group_id"] == -1)
+    output = write_true_events_hdf5(tmp_path / "correlated.h5", left, correlated)
+    with h5py.File(output, "r") as handle:
+        assert set(handle["events"]) == {"true", "lineage"}
+        assert handle["metadata"].attrs["source_model"] == "correlated"
+        assert "source_model_derived_json" in handle["metadata"].attrs
+
+
+def test_correlated_expected_reaction_guard_fails_before_generation() -> None:
+    config = load_config(PROJECT_ROOT / "configs" / "demo_minimal.yaml")
+    raw = config.model_dump(mode="python")
+    raw["source_model"]["kind"] = SourceModelKind.CORRELATED.value
+    raw["source_model"]["max_total_reactions"] = 10
+    guarded = He3SimConfig.model_validate(raw)
+
+    with np.testing.assert_raises_regex(ValueError, "expected branching reactions"):
+        simulate_true_events(guarded)
+
+
+def test_phase_a_cli_source_override_uses_correlated_preset(tmp_path: Path) -> None:
+    result = RUNNER.invoke(
+        app,
+        [
+            "simulate-events",
+            "-c",
+            str(PROJECT_ROOT / "configs" / "demo_minimal.yaml"),
+            "-o",
+            str(tmp_path / "phase_a.h5"),
+            "--source-model",
+            "correlated",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "source_model: correlated" in result.output
+    with h5py.File(tmp_path / "phase_a.h5", "r") as handle:
+        assert "lineage" in handle["events"]

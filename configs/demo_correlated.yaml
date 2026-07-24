@@ -1,0 +1,210 @@
+schema_version: "1"
+metadata:
+  run_name: phaseC-synthetic-demo
+  description: >-
+    Correlated prompt-neutron demonstration configuration for Phase C
+    continuous-signal analysis. All values are synthetic_demo; none represent
+    a measured detector, preamplifier, digitizer, or reactor parameter.
+  seed:
+    value: 20260720
+    status: synthetic_demo
+    notes: Reproducible Phase C demonstration seed.
+simulation:
+  true_rate_cps:
+    value: 2000.0
+    status: synthetic_demo
+    notes: Moderate demonstration rate for Phase C continuous signals.
+  sample_rate_hz:
+    value: 100000000.0
+    status: synthetic_demo
+    notes: 100 MS/s provides reasonable waveform resolution.
+source_model:
+  kind: correlated
+  k_eff:
+    value: 0.7
+    status: synthetic_demo
+    notes: Subcritical demonstration value; yields clear correlation strength.
+  alpha:
+    value: 1000.0
+    status: synthetic_demo
+    notes: Pure-prompt decay constant in s^-1; alpha_e from tau_d is ~1e5 s^-1.
+  detection_efficiency:
+    value: 0.3
+    status: synthetic_demo
+    notes: Moderate detection efficiency for demonstration SNRs.
+  nu_bar:
+    value: 2.5
+    status: synthetic_demo
+    notes: Demonstration multiplicity mean.
+  nu_pmf:
+    value: [0.0, 0.0, 0.5, 0.5]
+    status: synthetic_demo
+    notes: Arbitrary demonstration PMF with mean 2.5.
+  source_rate_cps:
+    value: 2000.0
+    status: synthetic_demo
+    notes: Chosen so S*epsilon/(1-k_eff) = 2000 cps.
+  max_chain_generation: 128
+  max_total_reactions: 2000000
+observation:
+  mode: fixed_duration
+  duration_s:
+    value: 0.5
+    status: synthetic_demo
+    notes: 0.5 s yields ~1000 events with moderate correlation; longer than Phase B.
+spectrum:
+  provider: parametric_he3
+  full_energy_keV:
+    value: 764.0
+    status: synthetic_demo
+  full_energy_sigma_keV:
+    value: 12.0
+    status: synthetic_demo
+  full_energy_fraction:
+    value: 0.5
+    status: synthetic_demo
+  proton_wall_fraction:
+    value: 0.2
+    status: synthetic_demo
+  proton_wall_min_keV:
+    value: 191.0
+    status: synthetic_demo
+  proton_wall_max_keV:
+    value: 764.0
+    status: synthetic_demo
+  proton_wall_alpha:
+    value: 1.5
+    status: synthetic_demo
+  proton_wall_beta:
+    value: 2.0
+    status: synthetic_demo
+  triton_wall_fraction:
+    value: 0.2
+    status: synthetic_demo
+  triton_wall_min_keV:
+    value: 573.0
+    status: synthetic_demo
+  triton_wall_max_keV:
+    value: 764.0
+    status: synthetic_demo
+  triton_wall_alpha:
+    value: 1.5
+    status: synthetic_demo
+  triton_wall_beta:
+    value: 2.0
+    status: synthetic_demo
+  double_wall_fraction:
+    value: 0.1
+    status: synthetic_demo
+  double_wall_min_keV:
+    value: 0.0
+    status: synthetic_demo
+  double_wall_max_keV:
+    value: 764.0
+    status: synthetic_demo
+  double_wall_alpha:
+    value: 1.2
+    status: synthetic_demo
+  double_wall_beta:
+    value: 3.0
+    status: synthetic_demo
+amplitude:
+  gain_V_per_keV:
+    value: 0.0001
+    status: synthetic_demo
+  offset_V:
+    value: 0.0
+    status: synthetic_demo
+  spread_std_V:
+    value: 0.001
+    status: synthetic_demo
+  polarity:
+    value: 1
+    status: synthetic_demo
+pulse_shape:
+  tau_r_s:
+    value: 0.000001
+    status: synthetic_demo
+    notes: Fast rise; alpha_e = 1/tau_d ≈ 100,000 s^-1 well-separated from alpha.
+  tau_d_s:
+    value: 0.00001
+    status: synthetic_demo
+    notes: 10 us decay; alpha_e >> alpha ensures clean separation.
+waveform:
+  renderer: auto
+  max_samples_per_block:
+    value: 131072
+    status: synthetic_demo
+  save_analog: true
+  analog_clip_min_V:
+    value: -1.0
+    status: synthetic_demo
+  analog_clip_max_V:
+    value: 1.0
+    status: synthetic_demo
+baseline:
+  enabled: true
+  offset_V:
+    value: 0.0
+    status: synthetic_demo
+noise:
+  enabled: true
+  white_noise_rms_V:
+    value: 0.002
+    status: synthetic_demo
+    notes: Moderate noise for deconvolution stability tests.
+  low_frequency_drift_enabled: false
+  low_frequency_drift_rms_V:
+    value: 0.0002
+    status: synthetic_demo
+  low_frequency_drift_correlation_s:
+    value: 0.0001
+    status: synthetic_demo
+adc:
+  enabled: true
+  bits:
+    value: 14
+    status: synthetic_demo
+  input_min_V:
+    value: -1.0
+    status: synthetic_demo
+  input_max_V:
+    value: 1.0
+    status: synthetic_demo
+  offset_V:
+    value: 0.0
+    status: synthetic_demo
+trigger:
+  enabled: false
+  polarity:
+    value: 1
+    status: synthetic_demo
+  threshold_V:
+    value: 0.01
+    status: synthetic_demo
+  hysteresis_V:
+    value: 0.001
+    status: synthetic_demo
+  min_hold_s:
+    value: 0.000001
+    status: synthetic_demo
+  pre_trigger_s:
+    value: 0.00001
+    status: synthetic_demo
+  post_trigger_s:
+    value: 0.00008
+    status: synthetic_demo
+dead_time:
+  mode: none
+  duration_s:
+    value: 0.0
+    status: synthetic_demo
+dataset:
+  continuous_duration_s:
+    value: 0.5
+    status: synthetic_demo
+  max_windows:
+    value: 256
+    status: synthetic_demo
+  compression: gzip
+  compression_level: 4

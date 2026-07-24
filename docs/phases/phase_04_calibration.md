@@ -61,5 +61,5 @@ he3sim analyze-scope --input <path> --profile <profile> -o outputs/phase04_calib
 ```text
 执行 Phase 4：建立示波器数据标定和实测模板流水线。
 
-阅读 @AGENTS.md、@docs/PROJECT_SPEC.md、@docs/phases/phase_04_calibration.md 和 @docs/STATUS.md。若尚无真实示波器文件，只使用合成 fixture 完成程序与测试，不得声称得到真实 He-3 参数。所有拟合输出先标记 provisional，并生成供人工审核的 QC 报告。运行验收、更新 STATUS 后停止，不得进入 Phase 5。
+阅读 @AGENTS.md、@docs/PROJECT_SPEC.md、@docs/phases/phase_04_calibration.md 和 @docs/STATUS.md。若尚无真实示波器文件，只使用合成 fixture 完成程序与测试，不得声称得到真实 He-3 参数。所有拟合输出先标记 provisional，并生成供人工审核的 QC 报告。运行验收、更新 STATUS 后停止；未通过 Phase 4V 不得进入 Phase 6。
 ```

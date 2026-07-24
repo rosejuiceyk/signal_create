@@ -8,7 +8,7 @@ import yaml
 from typer.testing import CliRunner
 
 from he3sim.cli import app
-from he3sim.config import He3SimConfig, load_config
+from he3sim.config import He3SimConfig, SourceModelKind, load_config
 from he3sim.io.dataset import write_dataset_hdf5
 from he3sim.synthesis.dataset import prepare_dataset_simulation
 
@@ -84,3 +84,27 @@ def test_phase3_cli_dataset_and_validation(tmp_path: Path) -> None:
     assert validation_result.exit_code == 0, validation_result.output
     assert "standard_rates: 13" in validation_result.output
     assert "result: passed" in validation_result.output
+
+
+def test_correlated_events_run_through_waveform_trigger_dead_time_and_dataset(
+    tmp_path: Path,
+) -> None:
+    config = observation_config()
+    raw = config.model_dump(mode="python")
+    raw["source_model"]["kind"] = SourceModelKind.CORRELATED.value
+    raw["source_model"]["source_rate_cps"]["value"] = 240_000.0
+    correlated = He3SimConfig.model_validate(raw)
+
+    plan = prepare_dataset_simulation(correlated, max_expected_events=1_000)
+    output = write_dataset_hdf5(tmp_path / "correlated-dataset.h5", plan, correlated)
+
+    with h5py.File(output, "r") as handle:
+        truth = np.asarray(handle["events/true"])
+        lineage = np.asarray(handle["events/lineage"])
+        assert truth.size > 0
+        assert lineage.shape == truth.shape
+        np.testing.assert_array_equal(lineage["event_id"], truth["event_id"])
+        assert handle["blocks/analog_samples"].shape == (plan.waveform.sample_count,)
+        assert "observed" in handle["events"]
+        assert "trigger_event_links" in handle["events"]
+        assert handle["metadata"].attrs["source_model"] == "correlated"

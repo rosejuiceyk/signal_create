@@ -14,7 +14,7 @@ from he3sim import __version__
 from he3sim.config import He3SimConfig, canonical_config_json, config_hash
 from he3sim.physics.events import TrueEventSimulation
 from he3sim.synthesis.streaming import WaveformSimulation, iter_waveform_blocks
-from he3sim.types import TRUE_EVENT_DTYPE, WAVEFORM_BLOCK_INDEX_DTYPE
+from he3sim.types import EVENT_LINEAGE_DTYPE, TRUE_EVENT_DTYPE, WAVEFORM_BLOCK_INDEX_DTYPE
 
 EVENT_UNITS = {
     "t_s": "s",
@@ -59,8 +59,14 @@ def write_true_events_hdf5(
             metadata.attrs["parameter_status"] = simulation.parameter_status.value
             metadata.attrs["units_json"] = json.dumps(EVENT_UNITS, sort_keys=True)
             metadata.attrs["arrival_algorithm"] = simulation.arrival_algorithm.value
+            metadata.attrs["source_model"] = simulation.source_model.value
             metadata.attrs["true_rate_cps"] = simulation.true_rate_cps
             metadata.attrs["duration_s"] = simulation.duration_s
+            if simulation.derived_source_metadata is not None:
+                metadata.attrs["source_model_derived_json"] = json.dumps(
+                    simulation.derived_source_metadata,
+                    sort_keys=True,
+                )
 
             events_group = handle.create_group("events")
             events_group.create_dataset(
@@ -72,6 +78,16 @@ def write_true_events_hdf5(
                 compression="gzip",
                 shuffle=True,
             )
+            if simulation.lineage is not None:
+                events_group.create_dataset(
+                    "lineage",
+                    data=simulation.lineage,
+                    dtype=EVENT_LINEAGE_DTYPE,
+                    maxshape=(None,),
+                    chunks=True,
+                    compression="gzip",
+                    shuffle=True,
+                )
         temporary_path.replace(path)
     except Exception:
         if temporary_path.exists():
@@ -130,12 +146,18 @@ def write_waveform_hdf5(
             metadata.attrs["parameter_status"] = simulation.parameter_status.value
             metadata.attrs["units_json"] = json.dumps(WAVEFORM_UNITS, sort_keys=True)
             metadata.attrs["arrival_algorithm"] = simulation.true_events.arrival_algorithm.value
+            metadata.attrs["source_model"] = simulation.true_events.source_model.value
             metadata.attrs["renderer"] = simulation.renderer.value
             metadata.attrs["true_rate_cps"] = simulation.true_events.true_rate_cps
             metadata.attrs["event_horizon_s"] = simulation.true_events.duration_s
             metadata.attrs["sample_rate_hz"] = simulation.sample_rate_hz
             metadata.attrs["sample_count"] = simulation.sample_count
             metadata.attrs["block_size"] = simulation.block_size
+            if simulation.true_events.derived_source_metadata is not None:
+                metadata.attrs["source_model_derived_json"] = json.dumps(
+                    simulation.true_events.derived_source_metadata,
+                    sort_keys=True,
+                )
 
             events_group = handle.create_group("events")
             events_group.create_dataset(
@@ -147,6 +169,16 @@ def write_waveform_hdf5(
                 compression="gzip",
                 shuffle=True,
             )
+            if simulation.true_events.lineage is not None:
+                events_group.create_dataset(
+                    "lineage",
+                    data=simulation.true_events.lineage,
+                    dtype=EVENT_LINEAGE_DTYPE,
+                    maxshape=(None,),
+                    chunks=True,
+                    compression="gzip",
+                    shuffle=True,
+                )
 
             blocks = handle.create_group("blocks")
             preclip_analog_dataset = None

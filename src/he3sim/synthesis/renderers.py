@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 import numpy.typing as npt
@@ -44,7 +45,7 @@ def event_first_sample_indices(
     scaled = times * sample_rate_hz
     if np.any(scaled > np.iinfo(np.int64).max):
         raise ValueError("event sample index cannot be represented as int64")
-    return np.ceil(scaled).astype(np.int64)
+    return cast(npt.NDArray[np.int64], np.ceil(scaled).astype(np.int64))
 
 
 def _validate_events(events: EventArray) -> None:

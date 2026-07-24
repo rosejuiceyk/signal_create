@@ -1,4 +1,4 @@
-"""Command-line interface through the experimental Phase 5 research model."""
+"""Command-line interface for physical simulation and read-only data qualification."""
 
 from __future__ import annotations
 
@@ -15,12 +15,35 @@ from he3sim.analysis.phase3_validation import (
     validate_phase3_physics,
     write_phase3_validation_report,
 )
+from he3sim.analysis.phase_a_validation import (
+    DEFAULT_RATE_SWEEP_EVENTS,
+    DEFAULT_VALIDATION_EVENTS,
+    build_phase_a_validation,
+    write_phase_a_validation_report,
+)
+from he3sim.analysis.phase_b_validation import (
+    DEFAULT_BOOTSTRAP_REPLICATES,
+    DEFAULT_DEADTIME_EVENTS,
+    DEFAULT_RECOVERY_EVENTS,
+    analyze_phase_b_config,
+    build_phase_b_validation,
+    write_phase_b_analysis_report,
+    write_phase_b_validation_report,
+)
+from he3sim.analysis.phase_c_validation import (
+    DEFAULT_DUAL_EVENTS,
+    DEFAULT_FRONTIER_EVENTS,
+    DEFAULT_PHASEC_EVENTS,
+    build_phase_c_validation,
+    write_phase_c_validation_report,
+)
 from he3sim.analysis.reports import write_arrival_validation_report
 from he3sim.analysis.waveform_plot import (
     DEFAULT_MAX_OVERVIEW_POINTS,
     plot_waveform_hdf5,
 )
-from he3sim.config import WaveformRenderer, config_hash, load_config
+from he3sim.calibration.qualification import qualify_acquisition
+from he3sim.config import SourceModelKind, WaveformRenderer, config_hash, load_config
 from he3sim.io.dataset import write_dataset_hdf5
 from he3sim.io.hdf5 import inspect_hdf5, write_true_events_hdf5, write_waveform_hdf5
 from he3sim.physics.arrivals import ArrivalAlgorithm
@@ -37,7 +60,7 @@ from he3sim.synthesis.streaming import (
 
 app = typer.Typer(
     name="he3sim",
-    help="He-3 physical simulation, local Web, and experimental Phase 5 research tools.",
+    help="He-3 physical simulation and read-only acquisition qualification tools.",
     no_args_is_help=True,
 )
 
@@ -82,6 +105,13 @@ def simulate_events_command(
         int,
         typer.Option(help="Explicit in-memory safety limit for expected events."),
     ] = DEFAULT_MAX_EXPECTED_EVENTS,
+    source_model: Annotated[
+        SourceModelKind | None,
+        typer.Option(
+            "--source-model",
+            help="Optional truth-arrival source override; defaults to the configuration.",
+        ),
+    ] = None,
 ) -> None:
     """Generate and persist truth events without rendering a waveform."""
     try:
@@ -90,6 +120,7 @@ def simulate_events_command(
             config,
             algorithm=algorithm,
             max_expected_events=max_expected_events,
+            source_model=source_model,
         )
         written_path = write_true_events_hdf5(output_path, simulation, config)
     except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
@@ -97,6 +128,7 @@ def simulate_events_command(
         raise typer.Exit(code=2) from exc
     typer.echo(f"wrote {simulation.events.size} truth events: {written_path}")
     typer.echo(f"arrival_algorithm: {simulation.arrival_algorithm.value}")
+    typer.echo(f"source_model: {simulation.source_model.value}")
     typer.echo(f"config_hash: {config_hash(config)}")
 
 
@@ -135,6 +167,143 @@ def validate_arrivals_command(
     typer.echo(f"arrival validation report: {report_path}")
     typer.echo(f"result: {'passed' if artifacts.report.passed else 'failed'}")
     if not artifacts.report.passed:
+        raise typer.Exit(code=3)
+
+
+@app.command("validate-correlated")
+def validate_correlated_command(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="YAML configuration with Phase A parameters."),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Directory for Phase A PNG and HTML reports."),
+    ] = Path("outputs/phaseA_report"),
+    validation_events: Annotated[
+        int,
+        typer.Option(help="Expected event count for interval, Fano, and degeneracy views."),
+    ] = DEFAULT_VALIDATION_EVENTS,
+    rate_sweep_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each k_eff point in the mean-rate sweep."),
+    ] = DEFAULT_RATE_SWEEP_EVENTS,
+) -> None:
+    """Generate the Phase A quantitative PNG and offline HTML validation report."""
+    try:
+        config = load_config(config_path)
+        artifacts = build_phase_a_validation(
+            config,
+            validation_events=validation_events,
+            rate_sweep_events=rate_sweep_events,
+        )
+        report_path = write_phase_a_validation_report(output_directory, config, artifacts)
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
+        typer.echo(f"Phase A validation failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Phase A validation report: {report_path}")
+    typer.echo("figures: 6 PNG")
+    typer.echo(
+        f"observed_rate_relative_error: {artifacts.metrics.observed_rate_relative_error:.6g}"
+    )
+    typer.echo(f"maximum_correlated_fano: {artifacts.metrics.maximum_correlated_fano:.6g}")
+    typer.echo(
+        "maximum_rate_sweep_relative_error: "
+        f"{artifacts.metrics.maximum_rate_sweep_relative_error:.6g}"
+    )
+    typer.echo(f"degeneracy_ks_distance: {artifacts.metrics.degeneracy_ks_distance:.6g}")
+    typer.echo(f"result: {'passed' if artifacts.metrics.passed else 'failed'}")
+    if not artifacts.metrics.passed:
+        raise typer.Exit(code=3)
+
+
+@app.command("analyze-noise")
+def analyze_noise_command(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="YAML configuration with Phase B parameters."),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Directory for Phase B fit PNG/HTML output."),
+    ] = Path("outputs/phaseB_noise"),
+    target_events: Annotated[
+        int,
+        typer.Option(help="Expected events in the single-stream analysis."),
+    ] = DEFAULT_RECOVERY_EVENTS,
+    bootstrap_replicates: Annotated[
+        int,
+        typer.Option(help="Time-block bootstrap replicate count."),
+    ] = DEFAULT_BOOTSTRAP_REPLICATES,
+) -> None:
+    """Fit Rossi-alpha, Feynman-alpha, and PSD for one synthetic event stream."""
+    try:
+        base_config = load_config(config_path)
+        analysis_config, analysis = analyze_phase_b_config(
+            base_config,
+            target_events=target_events,
+            bootstrap_replicates=bootstrap_replicates,
+        )
+        report_path = write_phase_b_analysis_report(output_directory, analysis_config, analysis)
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
+        typer.echo(f"Phase B noise analysis failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Phase B noise report: {report_path}")
+    typer.echo("figures: 3 PNG")
+    for curve in (analysis.rossi, analysis.feynman, analysis.psd):
+        typer.echo(
+            f"{curve.fit.method}: alpha={curve.fit.alpha_per_s:.6g} "
+            f"+/- {curve.fit.alpha_std_per_s:.6g} s^-1"
+        )
+
+
+@app.command("validate-alpha-recovery")
+def validate_alpha_recovery_command(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="YAML configuration with Phase B parameters."),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Directory for Phase B validation artifacts."),
+    ] = Path("outputs/phaseB_recovery"),
+    recovery_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each alpha-recovery point."),
+    ] = DEFAULT_RECOVERY_EVENTS,
+    deadtime_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each dead-time grid point."),
+    ] = DEFAULT_DEADTIME_EVENTS,
+    bootstrap_replicates: Annotated[
+        int,
+        typer.Option(help="Time-block bootstrap replicates per recovery point."),
+    ] = DEFAULT_BOOTSTRAP_REPLICATES,
+) -> None:
+    """Run the Phase B multi-case alpha recovery and dead-time automated gate."""
+    try:
+        config = load_config(config_path)
+        artifacts = build_phase_b_validation(
+            config,
+            recovery_events=recovery_events,
+            deadtime_events=deadtime_events,
+            bootstrap_replicates=bootstrap_replicates,
+        )
+        report_path = write_phase_b_validation_report(output_directory, config, artifacts)
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
+        typer.echo(f"Phase B alpha recovery failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Phase B validation report: {report_path}")
+    typer.echo("figures: 7 PNG")
+    typer.echo(
+        f"maximum_recovery_relative_error: {artifacts.metrics.maximum_recovery_relative_error:.6g}"
+    )
+    typer.echo(
+        f"maximum_inter_method_difference: {artifacts.metrics.maximum_inter_method_difference:.6g}"
+    )
+    typer.echo(f"usable_rate_cps: {artifacts.metrics.usable_rate_cps:.6g}")
+    typer.echo(f"result: {'passed' if artifacts.metrics.passed else 'failed'}")
+    if not artifacts.metrics.passed:
         raise typer.Exit(code=3)
 
 
@@ -310,83 +479,192 @@ def validate_physics_command(
         raise typer.Exit(code=3)
 
 
-@app.command("web")
-def web_command(
-    port: Annotated[
-        int,
-        typer.Option(help="Loopback TCP port for the local Streamlit server."),
-    ] = 8501,
-    headless: Annotated[
-        bool,
-        typer.Option(help="Do not ask Streamlit to open a browser automatically."),
-    ] = False,
-) -> None:
-    """Launch the Phase 3.5 interface on 127.0.0.1 only."""
-    from he3sim.app.launcher import launch_local_web
-
-    try:
-        launch_local_web(port=port, headless=headless)
-    except ValueError as exc:
-        typer.echo(f"local Web launch failed: {exc}", err=True)
-        raise typer.Exit(code=2) from exc
-
-
-@app.command("train-event-model")
-def train_event_model_command(
-    config_path: Annotated[
+@app.command("qualify-acquisition")
+def qualify_acquisition_command(
+    input_root: Annotated[
         Path,
-        typer.Option("--config", "-c", help="Phase 5 event-model training YAML."),
+        typer.Option("--input", help="Read-only root containing acquisition run directories."),
     ],
-) -> None:
-    """Train and checkpoint experimental network A with likelihood objectives."""
-    try:
-        from he3sim.ml.config import load_event_model_training_config
-        from he3sim.ml.training import train_event_model
-
-        artifacts = train_event_model(load_event_model_training_config(config_path))
-    except ImportError as exc:
-        typer.echo("Phase 5 requires the optional 'ml' dependencies", err=True)
-        raise typer.Exit(code=2) from exc
-    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
-        typer.echo(f"event-model training failed: {exc}", err=True)
-        raise typer.Exit(code=2) from exc
-    typer.echo(f"checkpoint: {artifacts.checkpoint_path}")
-    typer.echo(f"model_card: {artifacts.model_card_path}")
-    typer.echo(f"training_summary: {artifacts.summary_path}")
-    typer.echo(f"device: {artifacts.device}")
-    typer.echo("model_status: experimental")
-    typer.echo("default_generator: exact_poisson_parametric_spectrum")
-
-
-@app.command("compare-event-model")
-def compare_event_model_command(
-    config_path: Annotated[
+    profile_path: Annotated[
         Path,
-        typer.Option("--config", "-c", help="Phase 5 evaluation YAML."),
+        typer.Option("--profile", help="Explicit Phase 4Q acquisition profile YAML."),
     ],
     output_directory: Annotated[
         Path,
-        typer.Option("--output", "-o", help="Directory for comparison reports."),
+        typer.Option("--output", "-o", help="Repository output directory for QC artifacts."),
     ],
+    max_events_per_run: Annotated[
+        int,
+        typer.Option(
+            help="Bounded event rows per run; use 0 only for an intentional full streaming scan."
+        ),
+    ] = 256,
 ) -> None:
-    """Compare experimental network A with the exact physical baseline."""
+    """Run read-only Phase 4Q hashing, event QC, and split-feasibility analysis."""
     try:
-        from he3sim.ml.config import load_event_model_evaluation_config
-        from he3sim.ml.evaluation import compare_event_model
-
-        artifacts = compare_event_model(
-            load_event_model_evaluation_config(config_path), output_directory
+        artifacts = qualify_acquisition(
+            input_root,
+            profile_path,
+            output_directory,
+            max_events_per_run=None if max_events_per_run == 0 else max_events_per_run,
         )
-    except ImportError as exc:
-        typer.echo("Phase 5 requires the optional 'ml' dependencies", err=True)
-        raise typer.Exit(code=2) from exc
     except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
-        typer.echo(f"event-model comparison failed: {exc}", err=True)
+        typer.echo(f"Phase 4Q qualification failed: {exc}", err=True)
         raise typer.Exit(code=2) from exc
-    typer.echo(f"comparison_report: {artifacts.report_path}")
-    typer.echo(f"statistical_match: {str(artifacts.statistical_match).lower()}")
-    typer.echo(f"model_status: {artifacts.model_status}")
-    typer.echo("default_generator: exact_poisson_parametric_spectrum")
+    typer.echo(f"output_directory: {artifacts.output_directory}")
+    typer.echo(f"runs: {artifacts.run_count}")
+    typer.echo(f"signal_runs: {artifacts.signal_run_count}")
+    typer.echo(f"processed_events: {artifacts.processed_event_count}")
+    typer.echo(f"scan_complete_runs: {artifacts.scan_complete_run_count}")
+    typer.echo(f"scientific_exit_blocked: {str(artifacts.scientific_exit_blocked).lower()}")
+
+
+@app.command("analyze-continuous-noise")
+def analyze_continuous_noise_command(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="YAML configuration with Phase C parameters."),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Directory for Phase C continuous-noise artifacts."),
+    ] = Path("outputs/phaseC_continuous"),
+    recovery_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each alpha-recovery point."),
+    ] = DEFAULT_PHASEC_EVENTS,
+    dual_events: Annotated[
+        int,
+        typer.Option(help="Expected events for dual-detector CCF/CTM."),
+    ] = DEFAULT_DUAL_EVENTS,
+    frontier_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each frontier grid point."),
+    ] = DEFAULT_FRONTIER_EVENTS,
+) -> None:
+    """Run Phase C continuous-signal ACF, VTM, deconvolution, and CCF/CTM validation."""
+    try:
+        config = load_config(config_path)
+        artifacts = build_phase_c_validation(
+            config,
+            recovery_events=recovery_events,
+            dual_events=dual_events,
+            frontier_events=frontier_events,
+        )
+        report_path = write_phase_c_validation_report(output_directory, config, artifacts)
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
+        typer.echo(f"Phase C validation failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Phase C validation report: {report_path}")
+    typer.echo("figures: 7 PNG")
+    typer.echo(
+        f"maximum_continuous_acf_error: {artifacts.metrics.maximum_continuous_acf_error:.6g}"
+    )
+    typer.echo(
+        f"maximum_continuous_vtm_error: {artifacts.metrics.maximum_continuous_vtm_error:.6g}"
+    )
+    typer.echo(
+        f"continuous_vs_pulse_max_diff: {artifacts.metrics.continuous_vs_pulse_max_diff:.6g}"
+    )
+    typer.echo(f"usable_continuous_rate_cps: {artifacts.metrics.usable_continuous_rate_cps:.6g}")
+    typer.echo(f"result: {'passed' if artifacts.metrics.passed else 'failed'}")
+    if not artifacts.metrics.passed:
+        raise typer.Exit(code=3)
+
+
+@app.command("scan-usability-frontier")
+def scan_usability_frontier_command(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="Configuration for frontier grid scan."),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Directory for frontier scan artifacts."),
+    ] = Path("outputs/phaseC_frontier"),
+    frontier_events: Annotated[
+        int,
+        typer.Option(help="Expected events at each frontier grid point."),
+    ] = DEFAULT_FRONTIER_EVENTS,
+) -> None:
+    """Scan the continuous-signal usability frontier across (alpha x rate) grid."""
+    try:
+        config = load_config(config_path)
+        artifacts = build_phase_c_validation(
+            config,
+            recovery_events=DEFAULT_PHASEC_EVENTS,
+            dual_events=DEFAULT_DUAL_EVENTS,
+            frontier_events=frontier_events,
+        )
+        report_path = write_phase_c_validation_report(output_directory, config, artifacts)
+    except (OSError, ValueError, RuntimeError, yaml.YAMLError, ValidationError) as exc:
+        typer.echo(f"Phase C frontier scan failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Phase C frontier report: {report_path}")
+    typer.echo("figures: 7 PNG")
+    typer.echo(f"usable_continuous_rate_cps: {artifacts.metrics.usable_continuous_rate_cps:.6g}")
+    typer.echo(f"result: {'passed' if artifacts.metrics.passed else 'failed'}")
+
+
+@app.command("export-dashboard")
+def export_dashboard_command(
+    output_dir: Annotated[
+        str,
+        typer.Option("--output-dir", "-d", help="Directory with analysis results."),
+    ] = "outputs",
+    out_path: Annotated[
+        str | None,
+        typer.Option("--out", "-o", help="Output HTML path."),
+    ] = None,
+) -> None:
+    """Generate an offline self-contained HTML dashboard from existing results."""
+    from he3sim.ui.offline_dashboard import generate_offline_dashboard
+
+    try:
+        result = generate_offline_dashboard(output_dir, out_path)
+    except Exception as exc:
+        typer.echo(f"dashboard generation failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"offline dashboard: {result}")
+
+
+@app.command("ui")
+def ui_command(
+    port: Annotated[
+        int,
+        typer.Option("--port", "-p", help="Streamlit server port."),
+    ] = 8501,
+) -> None:
+    """Launch the interactive Streamlit web interface."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    import he3sim.ui
+
+    app_path = Path(he3sim.ui.__file__).parent / "app.py"
+    if not app_path.exists():
+        typer.echo(f"UI entry point not found: {app_path}", err=True)
+        raise typer.Exit(code=2)
+    try:
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "streamlit",
+                "run",
+                str(app_path),
+                "--server.port",
+                str(port),
+                "--browser.serverAddress",
+                "127.0.0.1",
+            ],
+            check=True,
+        )
+    except KeyboardInterrupt:
+        typer.echo("\nUI server stopped.")
+    except subprocess.CalledProcessError:
+        typer.echo("UI server exited with an error.", err=True)
 
 
 def main() -> None:

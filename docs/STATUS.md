@@ -2,40 +2,191 @@
 
 ## 当前阶段
 
-- 当前阶段：Phase 6 入口数据质量评估（尚未开始模型实现；DT5790 多计数率 run 已清点，等待逐事件 QC 与采样轴确认）
-- 当前状态：`blocked`
-- 最后更新：2026-07-14
+- 当前任务：Windows 11 免安装便携版自动验收完成；等待跨机器人工审核
+- 当前状态：`awaiting_human_review`
+- 活动物理基线：Phase 0–3 + Phase A + Phase B + Phase C；泊松仍为默认非相关基线
+- Phase HIL：用户明确跳过，CCF/CTM 估计器在 Phase C 中直接实现
+- Phase 4：`deferred`
+- Phase 3.5 原后端已归档；本机研究界面增量为 `awaiting_human_review`
+- Phase 5、Phase 6/6S：`archived`
+- 后续主线：相关中子噪声信号级数字孪生，见 `docs/ROADMAP_v2.md`
+- 本次边界：只增加本机 Streamlit 的 Win11 x64 便携启动和打包，不改变物理算法
 
 ## 已确认的范围
 
-- 软件输入：死时间前真实计数率 `10~1e7 cps`
-- 首版事件过程：恒定计数率齐次泊松过程
-- 首版粒子：热中子
-- 首版能谱：参数化 He-3 能谱
-- 首版脉冲：峰值归一化双指数前放脉冲
-- 采样率：`100~250 MS/s`
-- 当前硬件范围：不实现 DT5800；DT5790 非核心依赖
-- 当前界面范围：仅实现绑定 `127.0.0.1` 的本地 Streamlit 控制界面；不提供远程或托管服务
-- 后续实测：孤立脉冲和多个已知计数率下的连续示波器波形
-- 神经网络：路线 A 已作为 `experimental` 研究对照实现，未接入默认生成链；路线 C 未开始
-- 阶段完成门禁：自动验收通过后必须更新 `docs/USER_MANUAL.md` 并等待用户人工审核；未经明确确认不得进入下一阶段
+- 保留物理、合成、采集、分析、IO、配置 schema 与 Phase 4Q 校准资格代码；
+- 保留精确齐次泊松生成器作为非相关中子基线；
+- 原 Web/ML 源码、配置、测试和阶段文档只归档，不硬删除；
+- `docs/competition/` 按用户确认保留原位；
+- 原始采集目录保持只读，派生产物只写入 `outputs/`；
+- 所有演示参数继续标记为 `synthetic_demo`。
 
 ## 阶段记录
 
 | 阶段 | 状态 | 自动验收日期 | 说明 |
 |---|---|---|---|
-| 0 工程骨架 | human_review_passed | 2026-07-11 | 用户于 2026-07-13 确认人工审核通过 |
-| 1 事件与能谱 | human_review_passed | 2026-07-13 | 用户于 2026-07-13 确认人工审核通过；手册已补充两种泊松抽样方法介绍 |
-| 2 连续波形 | human_review_passed | 2026-07-13 | 用户已审核核心和波形图片，并明确要求进入 Phase 3 |
-| 3 触发与数据集 | human_review_passed | 2026-07-13 | 自动验收和用户人工审核均已通过 |
-| 3.5 本地 Web 界面 | awaiting_human_review | 2026-07-14 | 高计数率裁剪前波形显示与全部输入范围提示已复验；两份用户手册已更新，等待人工操作审核 |
-| 4 示波器标定 | deferred_by_user |  | 用户于 2026-07-14 明确要求等待实测数据到位后再标定 |
-| 5 网络 A | human_review_passed | 2026-07-14 | 用户于 2026-07-14 确认人工审核通过；统计匹配但无速度优势，保持 experimental |
-| 6 网络 C | blocked |  | 已识别11个含脉冲样信号的 DT5790 run 和4个空 run；相邻采样重复、下降沿截断及每计数率仅一个 run 仍阻止正式伪配对训练与留出评价 |
+| 0 工程骨架 | human_review_passed | 2026-07-11 | 历史审核通过 |
+| 1 事件与能谱 | human_review_passed | 2026-07-13 | 历史审核通过 |
+| 2 连续波形 | human_review_passed | 2026-07-13 | 历史审核通过 |
+| 3 触发与数据集 | human_review_passed | 2026-07-13 | 历史审核通过 |
+| 3.5 本地 Web | awaiting_human_review | 2026-07-24 | 四个本机计算页已生成 Win11 x64 免安装便携包 |
+| 4 示波器标定 | deferred |  | 等待合格实测数据和用户授权 |
+| 4Q 数据资格 | awaiting_human_review | 2026-07-15 | 保留只读资格审查；科学出口仍 blocked |
+| 5 网络 A | archived | 2026-07-18 | 历史实现移入 `archive/` |
+| 6/6S 网络 C | archived | 2026-07-18 | 正式路线与工程预演均移入 `archive/` |
+| M0 代码库精简 | human_review_passed | 2026-07-18 | 用户已明确确认人工验收通过 |
+| A 纯瞬发相关事件 | human_review_passed | 2026-07-19 | 核心生成器与静态可视化增量均经用户确认 |
+| B 脉冲模式噪声分析 | human_review_passed | 2026-07-19 | 三法复原、bootstrap、死时间偏置与七图报告；人工审核通过（2026-07-20） |
+| HIL DT5800 硬件在环 | skipped | | 用户明确跳过，CCF/CTM 在 Phase C 直接实现 |
+| C 连续信号噪声分析 | awaiting_human_review | 2026-07-20 | ACF/VTM/CCF/CTM/deconvolution + 可用边界扫描 + 壁效应敏感性 |
 
 ## 最近一次执行结果
 
-### Phase 6 候选 DT5790 数据入口审查
+### 2026-07-24 Windows 11 免安装便携版（自动验收通过）
+
+- 启动器：新增无控制台 Tkinter 控制器；后台子进程运行 Streamlit，动态选择空闲端口并只监听
+  `127.0.0.1`，自动打开默认浏览器，关闭控制器会终止服务并清理运行记录。
+- 重复启动：运行记录保存 PID/端口；第二次双击只打开现有 URL，不创建第二组进程。
+- 资源路径：源代码运行和 PyInstaller 冻结运行分别解析配置与页面资源；`outputs/`、`logs/` 固定写到
+  便携 EXE 所在目录。
+- 打包：新增 `he3signal_portable.spec`、`scripts/build_portable.ps1` 和包内中文说明；排除未使用的
+  PyTorch/TensorFlow/JAX 等可选框架，目录从首次误收集的约 3.14 GB 降至约 318.5 MB。
+- 产物：`dist/He3Signal/` 与 `dist/He3Signal-Win11-x64.zip`；ZIP 大小 `140886819` bytes，
+  SHA-256 为 `B6145C8494D280F5FFA854714F87E14FBB5E55D3549A3189EE77FDCE3D4F5D27`。
+- 自动验收：96 项单元测试（含启动器 4 项）、Ruff、mypy、UI 编译和四页 AppTest 通过；打包 EXE 实际启动后，
+  事件生成成功且四页均无 Streamlit 异常；重复启动进程数保持 2；向控制器发送标准关闭消息后两个进程
+  均退出且 `.he3signal-runtime.json` 被删除。
+- 限制：当前没有代码签名证书，SmartScreen 可能提示未知发布者；尚未在第二台无 Python 的 Win11
+  电脑上完成人工复制审核。
+- 当前结论：本机自动验收通过，状态为 `awaiting_human_review`；必须完成跨机器人工审核后才能确认交付。
+
+### 2026-07-24 本地交互界面精简（自动检查通过）
+
+- 页面提示：删除四个计算页结果区的 `synthetic_demo`、设备标定和浏览器会话保留提示；配置、JSON、
+  HDF5 等科研追溯信息不变。
+- 功能导航：删除侧栏“历史”分组与“历史结果浏览”页面，同时删除只为该页面服务的路径模块和单元测试。
+- 状态行为：各计算页最近一次成功结果仍保存在当前浏览器会话内，切换页面不会清除，只是不再显示说明页脚。
+- 自动检查：UI 编译、Ruff、`git diff --check`、92 项单元测试和 4 个页面的 Streamlit AppTest 冒烟检查通过。
+- 当前结论：界面代码与手册已同步，状态为 `awaiting_human_review`；不改变物理算法和 Phase C 科学状态。
+
+### 2026-07-23 本地交互界面可用性修订（自动检查通过）
+
+- 参数输入：移除同一参数的滑块/数值框组合，统一为可键入并可加减微调的数值输入框；独立的
+  bootstrap 次数滑块继续保留。
+- 历史浏览：输出根目录基于模块位置解析，递归发现嵌套报告，并在生成 HTML 链接前解析为绝对路径；
+  JSON 解析与图片加载失败会显示具体提示，不再静默吞掉。
+- 页面状态：事件、波形、Phase B 和 Phase C 页面分别保存最近一次成功结果；结果展示移到提交条件之外，
+  页面切换后重新执行脚本仍会从当前浏览器会话恢复。
+- 内存边界：波形与连续噪声页面只保存重绘所需的截取数据、拟合结果和指标，不长期保留完整大数组。
+- 自动检查：UI 模块编译、Ruff、mypy、94 项单元测试和 5 个页面的 Streamlit AppTest 冒烟检查通过；
+  全量测试因既有统计/集成测试在 5 分钟上限内未完成而终止，未观察到失败输出。
+- 浏览器检查：相关源参数只显示单一数值框；生成事件后切换到波形页再返回，指标与三张图仍存在；
+  历史页无 Streamlit 异常，报告链接均为绝对 `file:///` URI。
+- 当前结论：自动检查通过，状态为 `awaiting_human_review`；不改变 Phase C 原科学审核状态。
+- 后续变更：本节记录的历史结果浏览页已按 2026-07-24 用户要求删除。
+
+### 2026-07-20 Phase C 连续信号中子噪声分析（自动验收通过）
+
+- 连续 ACF/VTM：新增含探测器脉冲衰减常数 α_e 项的五参数模型拟合。
+- Wiener 去卷积：逆傅里叶 + Wiener 滤波，γ–NSR 稳定域热力扫描。
+- 双探测器 CCF/CTM：复用 Phase A 分支过程，各探测按 ε 分配通道；互协方差自动消除单通道脉冲自项。
+- 可用边界：扫描 3×4 (α, rate) 网格，绘出连续信号法 α 复原相对误差热力图。
+- 壁效应敏感性：变量壁效应混合权重，量化 w(η) 对 α 反演的影响。
+- 可视化：正式 CLI 生成 7 张 PNG、离线 HTML 和 JSON；普通图注使用中文，专业名词保留。
+- 工程 QA：Ruff、mypy、`git diff --check` 通过；全量 `pytest -q` 为 `196 passed`。
+- 范围：未进入缓发中子、全输运 Phase D、逆问题 ML、反应堆数据接入、交互仪表盘或 DT5800 HIL。
+- 当前结论：自动验收通过，状态为 `awaiting_human_review`；必须等待用户人工审核。
+
+
+
+### 2026-07-19 Phase B 脉冲模式噪声分析与 α 复原（自动验收）
+
+- 估计器：新增 Rossi-α、Feynman-α 和 PSD；拟合使用固定 `100–5000 s^-1` 边界，
+  不读取真值作为初值。Feynman/Rossi 的相关 bin 不确定度使用时间块 bootstrap。
+- 闭环：三组 `(alpha, epsilon, 真率)` 全部通过；最大 α 相对误差 `3.94%`，三方法最大差异
+  `2.37%`，均小于默认 `5%` 门限。
+- 死时间：扫描两组 α 与四组真率，应用非延长型 `4 us` synthetic_demo 死时间；Hazama/Mueller
+  一阶 VTM 修正至少在 75% 网格点减小偏置，从最低扫描率起的共同 `5%` 连续可用上限约
+  `10000 cps`。
+- 可视化：正式 CLI 生成 7 张 PNG、离线 HTML 和 JSON；普通图注使用中文，专业名词保留；
+  七图已逐图目检并修复图例遮挡。未实现交互仪表盘。
+- 工程 QA：指定 `signal_create` 环境已同步 SciPy 依赖；Ruff、mypy、`git diff --check` 通过，
+  全量 `pytest -q` 为 `167 passed`；正式 CLI 再运行通过。
+- 范围：未进入连续信号、HIL、缓发平台或反应堆数据。
+
+### 2026-07-19 Phase A 静态可视化验收增量
+
+- 图库：新增 `analysis/figures.py` 六个纯 Matplotlib 图函数，分别渲染同率事件 raster、间隔分布、
+  Fano-门宽、平均率-`k_eff`、真实链树和 `k→0` 退化；图层只消费验证层预计算的数据和指标。
+- 计算与追溯：验证层以固定 seed 计算一阶率差异、短间隔差异、Fano、率扫描误差和退化 KS；
+  生成器仅在显式开启时记录有限数量真实反应节点及 parent-child trace，生产默认路径不增加开销。
+- CLI 与产物：`he3sim validate-correlated -c configs/demo_minimal.yaml -o outputs/phaseA_report`
+  生成六张 PNG、离线 `phase_a_validation.html` 与 `phase_a_validation.json`，未实现交互仪表盘。
+- 正式演示结果：观察率相对差异 `0.275%`，最大相关 Fano `1.13429`，率扫描最大相对差异
+  `1.70%`，近零倍增 KS `0.0055651`，全部通过自动门禁；六张图已完成本地视觉检查。
+- 自动验收：`ruff format --check .`、`ruff check .`、`mypy src` 全部通过；`pytest -q`
+  160 项通过。
+- 人工验收：用户于 2026-07-19 明确确认 Phase A 可视化增量审核通过。
+- 当前结论：Phase A 标记为 `human_review_passed`；仍不得自动进入 Phase B。
+
+### 2026-07-18 Phase A 纯瞬发相关中子事件生成器
+
+- 门禁：用户明确确认 M0 人工验收通过，并接受“源开启窗口”约定和独立 lineage 旁表。
+- 配置：新增可选 `source_model`；默认 `poisson`，`correlated` 支持 `k_eff/reactivity` 二选一、
+  `alpha`、探测效率、`nu_bar/nu_pmf` 和外源率。所有演示物理量均为 `synthetic_demo`。
+- 映射：集中计算并校验 `lambda_f/lambda_c/lambda_d/lambda_t`、反应时间、代时间、Diven 因子和
+  `S*epsilon/(1-k_eff)` 一阶探测率；派生量写入 HDF5 元数据，不伪造新的证据状态。
+- 生成：新增源驱动纯瞬发逐链蒙特卡洛；外源复用现有泊松采样器，链状态可跨连续数据块保留；
+  泊松仍是默认路径，相关模式可由配置或 `simulate-events --source-model correlated` 选择。
+- 数据契约：`TRUE_EVENT_DTYPE` 未修改；`pileup_group_id` 继续只表示堆积分组；相关文件新增
+  `events/lineage(event_id, chain_id, generation)` 旁表。
+- 安全：期望事件预检、单链最大代数、总反应数、单块和总事件数均有显式上限，超限报错而不截断。
+- 验收：覆盖近零倍增泊松退化、一阶解析率、相关强度随 `k_eff` 增加、确定性、连续块边界、护栏、
+  HDF5 lineage，以及波形→ADC→触发→死时间→数据集全链冒烟。
+- 自动验收：`ruff format --check .`、`ruff check .`、`mypy src` 全部通过；`pytest -q` 155 项通过。
+- 人工验收：用户于 2026-07-19 明确确认 Phase A 审核通过。
+- 当前结论：Phase A 标记为 `human_review_passed`；仍不得自动进入 Phase B。
+
+### 2026-07-18 代码库精简
+
+- 归档：`src/he3sim/app/`、`src/he3sim/ml/`、对应 Web/ML 测试、三份 ML 配置、四份阶段文档、
+  Web 专用绘图脚本，以及已被新路线图取代的旧总控/技术方案文档。
+- 保留：physics、synthesis、acquisition、analysis、io、calibration、配置 schema、Phase 0–3 与
+  Phase 4/4Q 文档；`docs/competition/` 保持原位。
+- 修补：CLI 移除 Web/ML 子命令和导入；环境移除 Streamlit/PyTorch；活动 README、项目规范、
+  两份用户手册和阶段索引切换到归档说明与相关中子噪声路线图。
+- 新路线图：导入 `docs/ROADMAP_v2.md`，但本次未实施其中 Phase A 或后续功能。
+- 自动验收：`pytest -q` 138 项通过；Ruff format 检查 70 个文件、lint、mypy（46 个源文件）、
+  `pip check`、`he3sim --help` 与 `git diff --check` 全部通过。
+- 当前结论：M0 完成后只能标记为 `awaiting_human_review`。
+
+### 已归档历史记录
+
+#### Phase 6S 合成残差网络工程预演
+
+- 授权与边界：用户于2026-07-15为比赛进度明确授权在真实标定前使用人工干扰搭建网络；模型固定标记
+  `synthetic_scaffold`、`real_data_calibrated=false`、`scientific_promotion_allowed=false`，没有接入
+  默认物理/Web生成链，也没有恢复网络A。
+- 数据：所有patch均复用现有精确泊松事件和连续物理波形API；3个计数率、60个独立合成run按
+  36/12/12划分train/validation/test，不复用patch或seed。人工干扰包含配置化基线游移、白噪声、
+  AR型有色噪声、衰减振铃和有界非线性尾部，全部为`synthetic_demo`。
+- 模型与约束：10,833参数的轻量FiLM dilated TCN；输入物理波形、事件保护掩码、位置、计数率和
+  采样率，只输出限幅残差。事件保护区输出硬置零，推理形状、有限值、幅值或保护检查失败时回退纯物理
+  波形；网络没有可写真值事件账本。
+- 正式CUDA运行：PyTorch 2.12.1+cu130、CUDA 13.0、RTX 5060 Laptop GPU；最终30 epoch墙钟约2.35秒，
+  峰值CUDA分配79,770,624 bytes。测试集12个run保留445个物理真值事件。
+- 合成结果：物理到人工目标平均RMSE约0.00406049 V，修正后约0.000942519 V，相对改善约76.788%；
+  频谱误差约0.006893降至0.003483；事件保护违规0，安全回退0，真值事件账本未修改。该结果只证明
+  已知人工干扰恢复，不是实测探测器误差或泛化证据。
+- 产物：`outputs/phase06s_rehearsal/`包含checkpoint、合成run清单、逐run指标、训练摘要、评价JSON、
+  模型卡、比较报告和三面板PNG。
+- 专项自动验收：6项通过，覆盖独立且可复现的物理patch、可移植配置哈希、残差限幅/事件硬保护、
+  违规回退、CPU产物/检查点和CUDA前向。正式CLI运行通过；Ruff格式与lint通过，mypy检查56个源文件
+  无问题，全量pytest 150项通过、0失败、0跳过，`pip check`、CLI帮助和`git diff --check`均通过。
+- 当前结论：工程预演已达到人工审核条件，但正式Phase 6继续`blocked`，不得用该checkpoint声明真实
+  He-3精度、B1～B4优越性、跨run泛化或硬件就绪。
+
+#### Phase 4Q 候选 DT5790 数据入口审查
 
 - 审查范围：只读检查 `C:\Users\rosejuice\Desktop\7.9-data\4\DAQ` 下15个符合 `run3_数字` 命名的目录；未修改原始采集文件，未实现或训练网络 C。
 - run 级识别：`run3_1`、`run3_9`、`run3_10`、`run3_11` 的 input/output counts 均为0且 CSV 只有表头，判定为空 run；`run3_2`～`run3_8`、`run3_12`～`run3_15` 同时具有非零事件元数据和脉冲样波形偏转，判定为含信号 run。
@@ -45,12 +196,16 @@
 - 审查产物：`outputs/data_audit/run3_pulse_inventory.csv`、`outputs/data_audit/run3_pulse_inventory.md` 和 `outputs/data_audit/run3_representative_waveforms.png`。
 - 入口结论：目前只确认哪些 run 含脉冲样信号，不把采集软件粒子标签重新解释为已验证 He-3 分类。必须完成逐事件 QC 和采样轴确认后才能选择 Phase 4/Phase 6 数据；Phase 6 继续保持 `blocked`，没有进入网络实现。
 
-### Phase 5 条件标记事件网络 A
+#### Phase 5 条件标记事件网络 A
+
+> 以下是2026-07-14人工审核时的历史快照。当前活动实现、配置、CLI和测试已删除，状态为
+> `retired_by_user`，不得按本节历史命令恢复。
 
 - 实施范围：用户明确授权推迟 Phase 4 后，只实现 Phase 5 合成研究对照；未导入或虚构实测标定参数，未进入 Phase 6，未改变默认事件、波形、数据集或 Web 生成链。
 - 研究结论：exact Poisson + parametric spectrum 继续作为默认基线；网络 A 的模型卡、checkpoint 和比较报告均标记为 `experimental`，`promotion_recommended=false`。
 - 核心交付：
-  - 新增独立 `he3sim.ml` 包和 `ConditionalMarkedEventGenerator` Protocol；PyTorch 不进入 `he3sim.physics` 物理核心。
+  - 历史实现现保存在 `archive/src_ml/`，其中包含 `ConditionalMarkedEventGenerator` Protocol；
+    归档前 PyTorch 也未进入物理核心。
   - 条件输入包含 `log10(rate)`、窗口时长/预期规模、配置编码和显式 seed 随机潜变量；输出沿用真值事件 dtype，事件数可变且时间严格递增。
   - 使用 Poisson 计数似然、正值指数混合间隔似然、categorical 类型似然、按类型有界 logistic-normal 能量似然，以及正值 log-normal 幅值/时间常数似然；不使用 MSE 代替密度训练。
   - 类型头屏蔽零权重成分，推理保证能量非负、幅值为正、类型合法和 `tau_d > tau_r > 0`；超过显式事件上限直接拒绝。
@@ -78,7 +233,7 @@
 - 人工审核：用户于 2026-07-14 明确确认 Phase 5 人工审核通过；`docs/USER_MANUAL.md` 已同步记录。
 - 阶段结论：Phase 5 自动验收与人工审核均通过，但统计匹配不等于优于精确基线；网络继续保持 `experimental`。Phase 6 仅完成入口条件审查，尚未开始实现。
 
-### Phase 3.5 本地 Web 历史自动验收记录
+#### Phase 3.5 本地 Web
 
 - 实施范围：只新增 Phase 3.5 本地 Web 集成；未进入 Phase 4 示波器导入、拟合或标定，也未实现神经网络或硬件功能。
 - 核心交付：
@@ -140,6 +295,10 @@ YYYY-MM-DD | 决策 | 原因 | 影响范围 | 是否需用户确认
 ```
 
 ```text
+2026-07-19 | Phase B 的相关-bin 不确定度采用时间块 bootstrap，报告标准差取 bootstrap 与朴素拟合误差的保守上界 | 避免将共享事件产生的曲线 bin 误作独立观测 | analysis/noise、报告与验收 | 否，属于 Phase B 明确要求
+2026-07-19 | Hazama 死时间修正采用非延长型弱损失一阶 VTM lift Y_corr=Y_obs+2R_obs d，并显式报告可用边界 | 可复现公开的一阶修正且避免在高损失区声称无偏 | dead-time 网格、报告与限制 | 否，属于 Phase B 明确要求
+2026-07-19 | 后续新增图片的普通说明尽量使用中文，专业名词保留 | 落实用户的持续可视化表达要求 | analysis/figures 与报告 | 是，用户本轮明确要求
+2026-07-18 | Web/ML 路线只归档不删除，活动包不再安装或导入其依赖 | 保留历史可审计性并把主线切换到相关中子噪声 | archive、CLI、依赖与文档 | 是，用户已确认
 2026-07-11 | 可调数值逐字段保存 value/status/source/notes | 防止演示值、待审核值和已确认值混淆 | YAML 配置与未来元数据 | 否，属于已确认 Phase 0 计划
 2026-07-11 | 配置结构合法与可运行物理模拟分离 | 允许待标定值为 null，同时不伪造设备参数 | provisional 配置与后续运行门禁 | 否，属于已确认 Phase 0 计划
 2026-07-11 | 时间、电压、频率使用 SI，沉积能量保留显式 keV | 遵循单位优先原则及事件表既定字段 | 公共字段命名和 dtype | 否，属于已确认 Phase 0 计划
@@ -153,6 +312,7 @@ YYYY-MM-DD | 决策 | 原因 | 影响范围 | 是否需用户确认
 2026-07-13 | 齐次泊松同时保留 Poisson-count+sorted-uniform 与累积指数间隔实现 | 提供精确主算法、交叉验证和未来流式入口 | Phase 1 到达生成 API | 否，属于 Phase 1 明确要求
 2026-07-13 | 参数化谱使用全能峰正值截断高斯与三个有界 Beta 连续区 | 满足可配置混合、权重、定义域和峰位验收且不声称真实标定 | Phase 1 能谱 API 与配置 | 否，属于 Phase 1 明确要求
 2026-07-13 | 幅值展宽使用正值重采样，极性独立存储 | 保证 A_peak 为正且不把符号混入幅值 | Phase 1 幅值 API 与事件表 | 否，属于 Phase 1 明确要求
+
 2026-07-13 | Phase 1 HDF5 只写 events/true 与 metadata | 保持真值层边界，防止提前进入波形、触发和死时间 | Phase 1 IO | 否，属于阶段门禁
 2026-07-13 | 到达统计使用固定 seed、经验 CDF 距离和随重复数缩放的 Fano 容限 | 避免单次脆弱 p-value，同时检验均值、方差和算法一致性 | Phase 1 统计验收 | 否，属于测试稳健性要求
 2026-07-13 | 内存内事件生成默认限制预期事件数并允许显式调整 | 防止误配置直接分配超大真值表；流式输出留待 Phase 3 | Phase 1 CLI 与事件编排 | 否，属于安全边界
@@ -174,7 +334,7 @@ YYYY-MM-DD | 决策 | 原因 | 影响范围 | 是否需用户确认
 2026-07-13 | 标准扫描使用暖机区和固定 seed 聚合计数容差 | 消除有限窗口初始存活偏差，并处理延长型理论率接近零的工况 | 13 点死时间统计验证 | 否，属于稳健统计验收
 2026-07-13 | 内存报告使用事件、样本和块上限推导保守工作集，不设置跨机器秒数门槛 | 明确磁盘规模与 RAM 工作集的不同缩放规律 | 性能与内存报告 | 否，属于 Phase 3 验收要求
 2026-07-13 | 在 Phase 3 与 Phase 4 之间新增 Phase 3.5 而不重编号 | 允许真实标定数据到位前先集成现有功能，并保持后续阶段引用稳定 | 阶段文档、状态和用户手册 | 是，用户明确要求新增阶段并先配置本地 Web
-2026-07-13 | 本地 Web 后端只编排既有 Phase 1～2 API | 防止界面层产生第二套物理逻辑或改变已审核公共 API | he3sim.app 与连续波形产物 | 否，属于阶段边界
+2026-07-13 | 本地 Web 后端只编排既有 Phase 1～2 API | 防止界面层产生第二套物理逻辑或改变已审核公共 API | 现存档于 archive/src_app 与连续波形产物 | 否，属于阶段边界
 2026-07-13 | 交互单次限制 5000000 样本和 1000000 预期事件 | 避免页面请求造成大规模数组、HDF5 或绘图内存风险 | 资源预检、后端和用户手册 | 否，属于安全边界
 2026-07-13 | Streamlit 服务固定监听 127.0.0.1，完整 HDF5 仅保存在本机 | 当前只需要个人离线操作界面，不扩张为远程服务或大型文件浏览器下载 | CLI、页面和安全边界 | 否，属于 Phase 3.5 明确范围
 2026-07-13 | CSV 只包含 time_s 和 voltage_V，并从 HDF5 模拟电压分块写出 | 满足通用文本导出需求，同时避免第二套波形计算或一次性加载全部采样点 | Web 产物、页面和测试 | 是，用户人工审核反馈
@@ -184,8 +344,11 @@ YYYY-MM-DD | 决策 | 原因 | 影响范围 | 是否需用户确认
 2026-07-14 | Phase 2/Web HDF5 同时保存裁剪前诊断电压和裁剪后 ADC 输入电压 | 仅调整纵轴无法恢复已经被软件量程裁掉的高计数率堆积形态；两份数据可同时保留合成诊断与量程饱和事实 | WaveformBlock、流式合成、Phase 2 HDF5、Web 资源估算、PNG 和测试 | 是，用户人工审核反馈
 2026-07-14 | 软件操作与原理手册独立为 docs/SOFTWARE_USER_MANUAL.md | 将软件使用说明和分阶段人工审核记录分离，便于持续维护与审阅 | AGENTS、PROJECT_SPEC、Phase 3.5 文档和两份手册 | 是，用户明确要求
 2026-07-14 | 推迟 Phase 4 并以 synthetic_demo 数据先执行 Phase 5 | 用户当前没有实测示波器数据，但明确授权先研究网络 A；不得把合成训练解释为真实标定 | 阶段顺序、状态和 Phase 5 模型卡 | 是，用户明确授权
-2026-07-14 | 网络 A 使用已知物理参数中心加有界神经残差的似然头 | 保留 exact Poisson 的可解释基准，同时允许检验条件密度网络是否能复现可变长事件与 marks | he3sim.ml 模型、训练和推理 | 否，属于 Phase 5 研究假设
-2026-07-14 | 机器学习依赖隔离为可选 .[ml]，物理核心不导入 PyTorch | 遵守物理核心独立边界，并允许未安装 PyTorch 时继续使用全部精确物理 CLI | pyproject、he3sim.ml 与 CLI 延迟导入 | 否，属于固定工程边界
+2026-07-14 | 网络 A 使用已知物理参数中心加有界神经残差的似然头 | 保留 exact Poisson 的可解释基准，同时允许检验条件密度网络是否能复现可变长事件与 marks | 现存档于 archive/src_ml 的模型、训练和推理 | 否，属于 Phase 5 研究假设
+2026-07-14 | 机器学习依赖曾隔离为可选组，物理核心不导入 PyTorch | 遵守物理核心独立边界，并允许未安装 ML 依赖时继续使用精确物理 CLI | 历史依赖、归档 ML 与 CLI 延迟导入 | 否，属于固定工程边界
 2026-07-14 | Phase 5 checkpoint 和报告固定标记 experimental，比较不自动提升默认级别 | 当前数据由 exact 基线自身生成，统计匹配不等于更准确；正式比较还显示网络显著更慢 | checkpoint、模型卡、比较报告和默认生成链 | 否，属于 Phase 5 明确门禁
 2026-07-14 | 设备选择使用 cpu/cuda/auto，显式 CUDA 不可用时直接失败 | 防止用户以为 GPU 已启用而实际静默回退 CPU，并支持 RTX 5060 8 GB 的可审计运行 | ML 配置、训练、比较和测试 | 否，属于设备可复现要求
+2026-07-15 | 插入Phase 6S合成工程预演但不改变正式阶段顺序 | 用户为比赛进度授权先搭建网络；无真实标定时只能验证工程流程，不能生成科学结论 | Phase文档、CLI、ML模块、手册和状态 | 是，用户明确授权
+2026-07-15 | 人工干扰全部标记synthetic_demo且checkpoint禁止科学推广 | 防止已知人工目标恢复率被误写成真实探测器准确度 | 配置、数据、模型卡、评价和比赛表述 | 否，属于固定真实性边界
+2026-07-15 | TCN只输出有界残差，事件保护区硬置零，违规回退纯物理波形 | 精确泊松物理链必须继续拥有唯一真值事件账本，网络不得新增、删除或移动事件 | residual模型、安全门和测试 | 否，属于固定科学约束
 ```

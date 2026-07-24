@@ -552,6 +552,83 @@
       "title": "ParameterValue[int]",
       "type": "object"
     },
+    "ParameterValue_list_float__": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "status": {
+          "$ref": "#/$defs/ParameterStatus"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "reviewed_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed By"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed At"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "value",
+        "status"
+      ],
+      "title": "ParameterValue[list[float]]",
+      "type": "object"
+    },
     "PulseShapeConfig": {
       "additionalProperties": false,
       "description": "Time constants for the peak-normalized double exponential.",
@@ -612,6 +689,116 @@
       ],
       "title": "SimulationDomainConfig",
       "type": "object"
+    },
+    "SourceModelConfig": {
+      "additionalProperties": false,
+      "description": "Pure-prompt one-speed branching-process inputs and software guards.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/SourceModelKind",
+          "default": "poisson"
+        },
+        "k_eff": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reactivity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "alpha": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "detection_efficiency": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "nu_bar": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "nu_pmf": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_list_float__"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_rate_cps": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue_float_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "max_chain_generation": {
+          "default": 128,
+          "exclusiveMinimum": 0,
+          "title": "Max Chain Generation",
+          "type": "integer"
+        },
+        "max_total_reactions": {
+          "default": 1000000,
+          "exclusiveMinimum": 0,
+          "title": "Max Total Reactions",
+          "type": "integer"
+        }
+      },
+      "title": "SourceModelConfig",
+      "type": "object"
+    },
+    "SourceModelKind": {
+      "description": "Truth-arrival source models available to the simulation pipeline.",
+      "enum": [
+        "poisson",
+        "correlated"
+      ],
+      "title": "SourceModelKind",
+      "type": "string"
     },
     "TriggerConfig": {
       "additionalProperties": false,
@@ -707,6 +894,9 @@
     },
     "simulation": {
       "$ref": "#/$defs/SimulationDomainConfig"
+    },
+    "source_model": {
+      "$ref": "#/$defs/SourceModelConfig"
     },
     "observation": {
       "$ref": "#/$defs/ObservationWindowConfig"

@@ -5,13 +5,17 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 
-from he3sim.config import He3SimConfig
+from he3sim.config import He3SimConfig, SourceModelKind
 from he3sim.physics.amplitude import LinearAmplitudeMapper
-from he3sim.physics.events import event_parameter_status
+from he3sim.physics.arrivals import ArrivalAlgorithm, arrival_generator_for
+from he3sim.physics.chains import BranchingChainGenerator
+from he3sim.physics.events import event_parameter_status, resolve_true_rate_cps
 from he3sim.physics.pulse_parameters import FixedPulseParameterProvider
+from he3sim.physics.rate_profiles import ConstantRateProfile
+from he3sim.physics.source_model import PromptSourceModel
 from he3sim.physics.spectra import ParametricHe3Spectrum
 from he3sim.random import RandomContext
-from he3sim.types import TRUE_EVENT_DTYPE
+from he3sim.types import EVENT_LINEAGE_DTYPE, TRUE_EVENT_DTYPE
 
 
 def _value(value: float | int | None, name: str) -> float:
@@ -50,7 +54,21 @@ class StreamingTrueEventGenerator:
             _value(config.pulse_shape.tau_r_s.value, "tau_r_s"),
             _value(config.pulse_shape.tau_d_s.value, "tau_d_s"),
         )
-        self._rate_cps = _value(config.simulation.true_rate_cps.value, "true_rate_cps")
+        self._source_kind = config.source_model.kind
+        self._rate_cps = resolve_true_rate_cps(config)
+        self._chain_generator: BranchingChainGenerator | None = None
+        self._source_profile: ConstantRateProfile | None = None
+        if self._source_kind is SourceModelKind.CORRELATED:
+            prompt_model = PromptSourceModel.from_config(config.source_model)
+            self._source_profile = ConstantRateProfile(prompt_model.source_rate_cps)
+            self._chain_generator = BranchingChainGenerator(
+                prompt_model,
+                source_generator=arrival_generator_for(ArrivalAlgorithm.POISSON_UNIFORM),
+                max_events=max_events,
+                max_chain_generation=config.source_model.max_chain_generation,
+                max_total_reactions=config.source_model.max_total_reactions,
+            )
+        self._last_lineage = np.empty(0, dtype=EVENT_LINEAGE_DTYPE)
         self._next_event_id = 0
         self._next_pileup_group_id = 0
         self._previous_t_s: float | None = None
@@ -61,6 +79,11 @@ class StreamingTrueEventGenerator:
     def event_count(self) -> int:
         """Return the number of truth records emitted so far."""
         return self._next_event_id
+
+    @property
+    def last_lineage(self) -> npt.NDArray[np.void]:
+        """Return lineage aligned to the most recently emitted event chunk."""
+        return self._last_lineage
 
     def sample_interval(
         self,
@@ -75,7 +98,25 @@ class StreamingTrueEventGenerator:
         if not np.isfinite(stop_s) or stop_s <= start_s:
             raise ValueError("streaming event interval must have positive finite width")
         duration_s = stop_s - start_s
-        count = int(self._arrival_rng.poisson(self._rate_cps * duration_s))
+        chain_ids: npt.NDArray[np.int64] | None = None
+        generations: npt.NDArray[np.int32] | None = None
+        if self._chain_generator is not None:
+            assert self._source_profile is not None
+            batch = self._chain_generator.sample_with_lineage(
+                self._source_profile,
+                start_s,
+                duration_s,
+                self._arrival_rng,
+            )
+            times_s = batch.times_s
+            chain_ids = batch.chain_ids
+            generations = batch.generations
+            count = int(times_s.size)
+        else:
+            count = int(self._arrival_rng.poisson(self._rate_cps * duration_s))
+            times_s = np.sort(self._arrival_rng.uniform(start_s, stop_s, size=count)).astype(
+                np.float64, copy=False
+            )
         if count > self.max_chunk_events:
             raise ValueError(
                 f"realized event chunk {count} exceeds the explicit chunk limit "
@@ -83,9 +124,6 @@ class StreamingTrueEventGenerator:
             )
         if self._next_event_id + count > self.max_events:
             raise ValueError("realized streaming event count exceeds the explicit limit")
-        times_s = np.sort(self._arrival_rng.uniform(start_s, stop_s, size=count)).astype(
-            np.float64, copy=False
-        )
         spectrum = self._spectrum.sample(count, self._spectrum_rng)
         amplitudes = self._amplitude.sample(spectrum.energy_dep_keV, self._amplitude_rng)
         pulse = self._pulse.sample(
@@ -108,7 +146,10 @@ class StreamingTrueEventGenerator:
         events["polarity"] = amplitudes.polarity
         events["block_id"] = -1
         events["sample_index"] = -1
-        events["parameter_status"] = event_parameter_status(self.config).value.encode("ascii")
+        events["parameter_status"] = event_parameter_status(
+            self.config,
+            self._source_kind,
+        ).value.encode("ascii")
         if sample_rate_hz is not None or block_size is not None:
             if sample_rate_hz is None or block_size is None:
                 raise ValueError("waveform mapping requires sample_rate_hz and block_size together")
@@ -130,6 +171,13 @@ class StreamingTrueEventGenerator:
             events["pileup_group_id"][index] = group_id
             self._previous_t_s = time_s
             self._previous_tau_d_s = tau_d_s
+        if chain_ids is not None and generations is not None:
+            self._last_lineage = np.empty(count, dtype=EVENT_LINEAGE_DTYPE)
+            self._last_lineage["event_id"] = events["event_id"]
+            self._last_lineage["chain_id"] = chain_ids
+            self._last_lineage["generation"] = generations
+        else:
+            self._last_lineage = np.empty(0, dtype=EVENT_LINEAGE_DTYPE)
         self._next_event_id += count
         self._next_interval_start_s = stop_s
         return events
